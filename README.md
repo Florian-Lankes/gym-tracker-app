@@ -16,7 +16,7 @@ Requires Node.js 18+.
     npm run build
     npx serve dist
 
-Open the local URL in a browser. The service worker is enabled for the production build; install from the browser's Share menu on iPhone where supported.
+Open the local URL in a browser. The service worker is enabled for the production build; install from the browser's Share menu on iPhone where supported. Use the System / Light / Dark control in the Home header to choose a local display preference; it stays only in that browser.
 
 ## Checks
 
