@@ -2,6 +2,12 @@
 
 An offline-first, iPhone-first workout tracker. Build workouts in any order, record weight and reps, and review your saved history and simple weight-progress chart.
 
+## Install on iPhone
+
+Open https://florian-lankes.github.io/gym-tracker-app/ in Safari, tap Share, then tap **Add to Home Screen**. The installed app keeps workout data locally in this browser's IndexedDB.
+
+Repository: https://github.com/Florian-Lankes/gym-tracker-app
+
 ## Run locally
 
 Requires Node.js 18+.
