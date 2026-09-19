@@ -1,6 +1,6 @@
 # Lift Log
 
-An offline-first, iPhone-first workout tracker. Build workouts in any order, record weight and reps, and review your saved history and simple weight-progress chart.
+An offline-first, iPhone-first workout tracker. Build workouts in any order, save reusable exercise templates, automatically record session duration, and review completed workout details and a simple weight-progress chart.
 
 ## Install on iPhone
 

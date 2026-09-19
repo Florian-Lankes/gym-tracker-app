@@ -1,7 +1,40 @@
 const uid = () => crypto.randomUUID();
 
-export function createWorkout(name = 'Workout', performedAt = new Date().toISOString()) {
-  return { id: uid(), name: name.trim() || 'Workout', performedAt, exercises: [] };
+export function createWorkout(name = 'Workout', startedAt = new Date().toISOString()) {
+  return { id: uid(), name: name.trim() || 'Workout', performedAt: startedAt, startedAt, exercises: [] };
+}
+
+export function createTemplate(name = 'Template', exerciseNames = []) {
+  return {
+    id: uid(),
+    name: name.trim() || 'Template',
+    exercises: exerciseNames.map((exerciseName) => ({ id: uid(), name: exerciseName.trim(), sets: [] })).filter((exercise) => exercise.name)
+  };
+}
+
+export function startTemplate(template, startedAt = new Date().toISOString()) {
+  return {
+    id: uid(),
+    templateId: template.id,
+    name: template.name,
+    performedAt: startedAt,
+    startedAt,
+    exercises: template.exercises.map((exercise) => ({ id: uid(), name: exercise.name, sets: [] }))
+  };
+}
+
+export function completeWorkout(workout, completedAt = new Date().toISOString()) {
+  const startedAt = workout.startedAt || workout.performedAt || completedAt;
+  return {
+    ...workout,
+    startedAt,
+    completedAt,
+    durationSeconds: Math.max(0, Math.round((new Date(completedAt) - new Date(startedAt)) / 1000))
+  };
+}
+
+export function completedSessions(workouts) {
+  return [...workouts].sort((a, b) => new Date(b.completedAt || b.performedAt) - new Date(a.completedAt || a.performedAt));
 }
 
 export function addExercise(workout, name) {
