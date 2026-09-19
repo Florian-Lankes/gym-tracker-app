@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createWorkout, addExercise, addSet, moveExercise, calculateSuggestion, exerciseHistory,
-  createTemplate, startTemplate, completeWorkout, completedSessions
+  createTemplate, startTemplate, completeWorkout, completedSessions, prepareActiveSession,
+  discardActiveSession
 } from '../src/data.js';
 
 test('builds an ordered workout with multiple weight and reps sets', () => {
@@ -22,15 +23,46 @@ test('moves an exercise within a flexible workout', () => {
   assert.deepEqual(workout.exercises.map((exercise) => exercise.name), ['Row', 'Squat']);
 });
 
-test('starts a named template as an independent workout session', () => {
-  const template = createTemplate('Upper body', ['Bench Press', 'Row']);
+test('stores template exercise set counts and accepts legacy string exercises', () => {
+  const template = createTemplate('Upper body', [
+    { name: 'Bench Press', setCount: 3 },
+    { name: 'Row', setCount: 2 },
+    'Pull-up'
+  ]);
+
+  assert.deepEqual(template.exercises.map(({ name, setCount }) => ({ name, setCount })), [
+    { name: 'Bench Press', setCount: 3 },
+    { name: 'Row', setCount: 2 },
+    { name: 'Pull-up', setCount: 1 }
+  ]);
+});
+
+test('starts a named template as an independent workout with configured blank set rows', () => {
+  const template = createTemplate('Upper body', [{ name: 'Bench Press', setCount: 3 }, { name: 'Row', setCount: 2 }]);
   const session = startTemplate(template, '2026-09-19T10:00:00.000Z');
 
   assert.equal(session.name, 'Upper body');
   assert.equal(session.templateId, template.id);
   assert.notEqual(session.id, template.id);
   assert.equal(session.startedAt, '2026-09-19T10:00:00.000Z');
-  assert.deepEqual(session.exercises.map((exercise) => exercise.name), ['Bench Press', 'Row']);
+  assert.deepEqual(session.exercises.map((exercise) => [exercise.name, exercise.sets.length]), [['Bench Press', 3], ['Row', 2]]);
+  assert.deepEqual(session.exercises[0].sets, [{ weight: '', reps: '' }, { weight: '', reps: '' }, { weight: '', reps: '' }]);
+});
+
+test('reuses an existing active session instead of creating a second session', () => {
+  const active = createWorkout('Already lifting', '2026-09-19T10:00:00.000Z');
+  const template = createTemplate('Upper body', [{ name: 'Bench Press', setCount: 3 }]);
+
+  assert.equal(prepareActiveSession(active, template), active);
+  assert.notEqual(prepareActiveSession(null, template).id, active.id);
+});
+
+test('discarding an active session returns no active session without changing completed history', () => {
+  const active = createWorkout('Draft');
+  const completed = completeWorkout(createWorkout('Saved', '2026-09-19T10:00:00.000Z'), '2026-09-19T10:10:00.000Z');
+
+  assert.equal(discardActiveSession(active), null);
+  assert.equal(completedSessions([completed]).length, 1);
 });
 
 test('completes a workout with elapsed duration without changing its start time', () => {
@@ -42,7 +74,7 @@ test('completes a workout with elapsed duration without changing its start time'
   assert.equal(completed.durationSeconds, 3723);
 });
 
-test('lists only completed sessions newest first while retaining legacy workouts', () => {
+test('lists completed sessions newest first while retaining legacy workouts', () => {
   const sessions = completedSessions([
     { id: 'legacy', name: 'Old workout', performedAt: '2026-09-17T12:00:00.000Z', exercises: [] },
     { id: 'older', name: 'Earlier', completedAt: '2026-09-18T10:00:00.000Z', durationSeconds: 60, exercises: [] },
