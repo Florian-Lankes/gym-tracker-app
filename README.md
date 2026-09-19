@@ -1,0 +1,26 @@
+# Lift Log
+
+An offline-first, iPhone-first workout tracker. Build workouts in any order, record weight and reps, and review your saved history and simple weight-progress chart.
+
+## Run locally
+
+Requires Node.js 18+.
+
+    npm install
+    npm run build
+    npx serve dist
+
+Open the local URL in a browser. The service worker is enabled for the production build; install from the browser's Share menu on iPhone where supported.
+
+## Checks
+
+    npm test
+    npm run build
+
+## Privacy
+
+Lift Log has no accounts, backend, analytics, cloud sync, or sharing. Workout data is stored only in this browser's IndexedDB on this device. Clearing browser/site data removes it.
+
+## Scope
+
+Suggestions are optional text prompts based on the most recent saved set. They never automatically change a workout or prescribe a program.
