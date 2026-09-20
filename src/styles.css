@@ -107,7 +107,14 @@ input::placeholder { color: var(--muted); opacity: .9; }
 .chart-card { overflow: hidden; padding: 12px; }
 canvas { display: block; width: 100%; height: auto; max-width: 100%; }
 #chart-empty { margin: 10px 4px 2px; }
+.statistics-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.statistics-controls label { margin: 0; }
+.progress-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+.progress-metrics > div { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.progress-metrics span { color: var(--muted); font-size: .72rem; font-weight: 800; line-height: 1.2; }
+.progress-metrics strong { font-size: .96rem; overflow-wrap: anywhere; }
+.progress-metrics p { grid-column: 1 / -1; margin: 0; }
 #overview-list .history-card strong { display: block; margin-bottom: 6px; }
 #overview-list .history-card p { margin-bottom: 0; }
-@media (max-width: 380px) { .app-shell { padding-inline: 16px; } .template-exercise { grid-template-columns: minmax(0, 1fr) 72px 44px; gap: 6px; } .set-row { grid-template-columns: 48px 1fr 1fr; gap: 6px; } }
+@media (max-width: 380px) { .app-shell { padding-inline: 16px; } .template-exercise { grid-template-columns: minmax(0, 1fr) 72px 44px; gap: 6px; } .set-row { grid-template-columns: 48px 1fr 1fr; gap: 6px; } .statistics-controls, .progress-metrics { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
