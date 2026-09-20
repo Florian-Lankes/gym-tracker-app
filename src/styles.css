@@ -87,6 +87,16 @@ label { display: grid; gap: 6px; margin: 16px 0; color: var(--text); font-size: 
 input, select { width: 100%; min-height: 48px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); }
 input::placeholder { color: var(--muted); opacity: .9; }
 .template-exercise { display: grid; grid-template-columns: minmax(0, 1fr) 82px 44px; align-items: end; gap: 8px; padding: 12px; }
+.exercise-catalog { margin: 24px 0; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-raised); }
+.exercise-catalog h3, .exercise-catalog .subtle { margin-bottom: 6px; }
+.catalog-controls { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px; }
+.catalog-controls label { margin: 8px 0; }
+#catalog-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.catalog-result { display: grid; min-height: 64px; align-content: center; gap: 3px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); text-align: left; }
+.catalog-result:hover { border-color: var(--accent); }
+.catalog-result strong { overflow-wrap: anywhere; }
+.catalog-result span { color: var(--muted); font-size: .74rem; font-weight: 750; }
+.custom-exercise-heading { margin: 24px 0 0; }
 .template-exercise label { margin: 0; }
 .remove-exercise { width: 44px; height: 48px; border-radius: 10px; background: var(--danger-surface); color: var(--danger); font-size: 1.5rem; font-weight: 700; }
 #exercise-list { display: grid; grid-template-columns: minmax(0, 1fr); }
@@ -116,5 +126,5 @@ canvas { display: block; width: 100%; height: auto; max-width: 100%; }
 .progress-metrics p { grid-column: 1 / -1; margin: 0; }
 #overview-list .history-card strong { display: block; margin-bottom: 6px; }
 #overview-list .history-card p { margin-bottom: 0; }
-@media (max-width: 380px) { .app-shell { padding-inline: 16px; } .template-exercise { grid-template-columns: minmax(0, 1fr) 72px 44px; gap: 6px; } .set-row { grid-template-columns: 48px 1fr 1fr; gap: 6px; } .statistics-controls, .progress-metrics { grid-template-columns: 1fr; } }
+@media (max-width: 380px) { .app-shell { padding-inline: 16px; } .template-exercise { grid-template-columns: minmax(0, 1fr) 72px 44px; gap: 6px; } .set-row { grid-template-columns: 48px 1fr 1fr; gap: 6px; } .statistics-controls, .progress-metrics, .catalog-controls, #catalog-results { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }

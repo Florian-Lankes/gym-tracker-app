@@ -3,6 +3,7 @@ import { loadWorkouts, saveWorkout, loadTemplates, saveTemplate, deleteTemplate,
 import { normalizeTheme, resolveTheme } from './theme.js';
 import { createBackup, mergeBackup, parseBackup } from './backup.js';
 import { exerciseStatistics } from './statistics.js';
+import { EXERCISE_CATALOG, catalogCategories, searchCatalog } from './exercise-catalog.js';
 
 const $ = (selector) => document.querySelector(selector);
 let workouts = [], templates = [], activeSession = null, selectedTemplate = null;
@@ -102,9 +103,31 @@ function appendTemplateExercise(value = {}) {
   row.querySelector('.template-exercise-name').value = value.name || ''; row.querySelector('.template-set-count').value = Number.parseInt(value.setCount, 10) || 1;
   row.querySelector('.remove-exercise').onclick = () => row.remove(); $('#template-exercises').append(row);
 }
+function renderExerciseCatalog() {
+  const category = $('#catalog-category').value;
+  const query = $('#catalog-search').value;
+  const results = $('#catalog-results');
+  results.replaceChildren();
+  searchCatalog(EXERCISE_CATALOG, { category, query }).forEach((exercise) => {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'catalog-result';
+    const name = document.createElement('strong'); name.textContent = exercise.name;
+    const label = document.createElement('span'); label.textContent = exercise.category;
+    button.append(name, label);
+    button.onclick = () => {
+      const existingNames = [...document.querySelectorAll('.template-exercise-name')].map((input) => input.value.trim().toLocaleLowerCase());
+      appendTemplateExercise({ name: exercise.name, setCount: 1 });
+      $('#template-note').textContent = existingNames.includes(exercise.name.toLocaleLowerCase()) ? `${exercise.name} was added again; duplicate exercises remain separate.` : `${exercise.name} added. Set the number of sets below.`;
+    };
+    results.append(button);
+  });
+  if (!results.children.length) results.innerHTML = '<p class="subtle">No matching exercises. Add a custom exercise below.</p>';
+}
 function openTemplateForm(template = null) {
-  $('#template-form').reset(); $('#template-exercises').replaceChildren(); $('#template-id').value = template?.id || ''; $('#template-name').value = template?.name || ''; $('#template-form-heading').textContent = template ? 'Edit template' : 'New template';
-  (template?.exercises || [{}]).forEach(appendTemplateExercise); showView('template-form');
+  $('#template-form').reset(); $('#template-exercises').replaceChildren(); $('#template-id').value = template?.id || ''; $('#template-name').value = template?.name || ''; $('#template-form-heading').textContent = template ? 'Edit template' : 'New template'; $('#template-note').textContent = '';
+  const categorySelect = $('#catalog-category'); categorySelect.replaceChildren(new Option('All categories', ''));
+  categorySelect.append(...catalogCategories().map((category) => new Option(category, category)));
+  (template?.exercises || [{}]).forEach(appendTemplateExercise); renderExerciseCatalog(); showView('template-form');
 }
 async function startSelectedTemplate() {
   if (activeSession) return renderWorkout();
@@ -138,6 +161,7 @@ function renderStatistics() { const names = [...new Set(completedSessions(workou
 $('#new-template').onclick = () => openTemplateForm(); $('#statistics').onclick = () => showView('statistics'); $('#settings').onclick = () => showView('settings'); $('#start-template').onclick = startSelectedTemplate; $('#edit-template').onclick = () => openTemplateForm(selectedTemplate);
 $('#delete-template').onclick = async () => { await deleteTemplate(selectedTemplate.id); templates = await loadTemplates(); showView('home'); };
 $('#add-template-exercise').onclick = () => appendTemplateExercise(); $('#template-form').onsubmit = async (event) => { event.preventDefault(); const exercises = [...document.querySelectorAll('.template-exercise')].map((row) => ({ name: row.querySelector('.template-exercise-name').value, setCount: row.querySelector('.template-set-count').value })); const template = createTemplate($('#template-name').value, exercises); if (!template.exercises.length) { $('#template-note').textContent = 'Add at least one exercise.'; return; } const id = $('#template-id').value; await saveTemplate(id ? { ...template, id } : template); templates = await loadTemplates(); selectedTemplate = templates.find((item) => item.id === (id || template.id)); showView('home'); };
+$('#catalog-search').oninput = renderExerciseCatalog; $('#catalog-category').onchange = renderExerciseCatalog;
 function openWorkoutGuard() { $('#save-workout').hidden = true; $('#guard-actions').hidden = false; $('#guard-save').focus(); }
 function closeWorkoutGuard() { $('#guard-actions').hidden = true; $('#save-workout').hidden = false; $('#workout-back').focus(); }
 $('#workout-back').onclick = openWorkoutGuard; $('#guard-save').onclick = saveCurrentWorkout; $('#save-workout').onclick = saveCurrentWorkout; $('#guard-discard').onclick = discardCurrentWorkout; $('#guard-cancel').onclick = closeWorkoutGuard;
