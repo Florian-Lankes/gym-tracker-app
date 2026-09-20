@@ -46,7 +46,7 @@ button { cursor: pointer; border: 0; }
 button, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 button:active { transform: translateY(1px); }
-.app-shell { max-width: 620px; min-height: 100vh; margin: auto; padding: calc(24px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)); }
+.app-shell { max-width: 620px; min-height: 100vh; margin: auto; padding: calc(24px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)); touch-action: manipulation; }
 header { padding: 8px 2px 28px; }
 .header-top, .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .header-actions { display: flex; gap: 8px; }
