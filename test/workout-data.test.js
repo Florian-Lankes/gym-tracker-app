@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {
   createWorkout, addExercise, addSet, moveExercise, calculateSuggestion, exerciseHistory,
   createTemplate, startTemplate, completeWorkout, completedSessions, prepareActiveSession,
-  discardActiveSession, copyPreviousSet, adjustSetValue, reviseCompletedWorkout, removeCompletedWorkout
+  discardActiveSession, copyPreviousSet, adjustSetValue, reviseCompletedWorkout, removeCompletedWorkout,
+  duplicateTemplate, moveTemplateExercise
 } from '../src/data.js';
 
 test('builds an ordered workout with multiple weight and reps sets', () => {
@@ -55,6 +56,43 @@ test('stores template exercise set counts and accepts legacy string exercises', 
     { name: 'Row', setCount: 2 },
     { name: 'Pull-up', setCount: 1 }
   ]);
+});
+
+test('duplicates templates with fresh identities, collision-safe names, and isolated exercises', () => {
+  const source = createTemplate('Upper body', [
+    { name: 'Bench Press', setCount: 3 },
+    { name: 'Bench Press', setCount: 2 },
+    { name: 'Custom row', setCount: 4 }
+  ]);
+  const duplicate = duplicateTemplate(source, ['Upper body', 'Upper body copy']);
+
+  assert.notEqual(duplicate.id, source.id);
+  assert.equal(duplicate.name, 'Upper body copy 2');
+  assert.deepEqual(duplicate.exercises.map(({ name, setCount }) => ({ name, setCount })), [
+    { name: 'Bench Press', setCount: 3 },
+    { name: 'Bench Press', setCount: 2 },
+    { name: 'Custom row', setCount: 4 }
+  ]);
+  assert.notEqual(duplicate.exercises[0].id, source.exercises[0].id);
+  duplicate.exercises[0].name = 'Changed';
+  assert.equal(source.exercises[0].name, 'Bench Press');
+
+  const legacyDuplicate = duplicateTemplate({ id: 'legacy', name: 'Legacy', exercises: ['Pull-up'] }, ['Legacy']);
+  assert.deepEqual(legacyDuplicate.exercises.map(({ name, setCount }) => ({ name, setCount })), [{ name: 'Pull-up', setCount: 1 }]);
+});
+
+test('reorders template exercises without changing configured set counts or source bounds', () => {
+  const template = createTemplate('Upper body', [
+    { name: 'Bench Press', setCount: 3 }, { name: 'Row', setCount: 2 }, { name: 'Press', setCount: 4 }
+  ]);
+
+  assert.equal(moveTemplateExercise(template, 0, -1), template);
+  assert.equal(moveTemplateExercise(template, 2, 3), template);
+  const reordered = moveTemplateExercise(template, 2, 1);
+  assert.deepEqual(reordered.exercises.map(({ name, setCount }) => ({ name, setCount })), [
+    { name: 'Bench Press', setCount: 3 }, { name: 'Press', setCount: 4 }, { name: 'Row', setCount: 2 }
+  ]);
+  assert.deepEqual(template.exercises.map((exercise) => exercise.name), ['Bench Press', 'Row', 'Press']);
 });
 
 test('starts a named template as an independent workout with configured blank set rows', () => {

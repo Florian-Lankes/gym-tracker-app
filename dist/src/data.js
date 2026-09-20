@@ -17,6 +17,24 @@ export function createTemplate(name = 'Template', exercises = []) {
   };
 }
 
+export function duplicateTemplate(template, existingNames = []) {
+  const sourceName = template.name.trim() || 'Template';
+  const names = new Set(existingNames.map((name) => String(name).trim().toLocaleLowerCase()));
+  const baseName = `${sourceName} copy`;
+  let name = baseName;
+  let suffix = 2;
+  while (names.has(name.toLocaleLowerCase())) name = `${baseName} ${suffix++}`;
+  return createTemplate(name, template.exercises);
+}
+
+export function moveTemplateExercise(template, from, to) {
+  if (to < 0 || to >= template.exercises.length || from === to) return template;
+  const exercises = [...template.exercises];
+  const [exercise] = exercises.splice(from, 1);
+  exercises.splice(to, 0, exercise);
+  return { ...template, exercises };
+}
+
 export function startTemplate(template, startedAt = new Date().toISOString()) {
   return {
     id: uid(), templateId: template.id, name: template.name, performedAt: startedAt, startedAt,

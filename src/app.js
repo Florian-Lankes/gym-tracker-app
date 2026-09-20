@@ -1,4 +1,4 @@
-import { createTemplate, startTemplate, completeWorkout, addSet, latestValues, completedSessions, copyPreviousSet, adjustSetValue, reviseCompletedWorkout } from './data.js';
+import { createTemplate, duplicateTemplate, startTemplate, completeWorkout, addSet, latestValues, completedSessions, copyPreviousSet, adjustSetValue, reviseCompletedWorkout } from './data.js';
 import { loadWorkouts, saveWorkout, deleteWorkout, loadTemplates, saveTemplate, deleteTemplate, loadActiveSession, saveActiveSession, clearActiveSession } from './db.js';
 import { normalizeTheme, resolveTheme } from './theme.js';
 import { createBackup, mergeBackup, parseBackup } from './backup.js';
@@ -97,11 +97,21 @@ function renderTemplateDetail() {
     list.append(row);
   });
 }
+function updateTemplateExerciseControls() {
+  const rows = [...document.querySelectorAll('.template-exercise')];
+  rows.forEach((row, index) => {
+    row.querySelector('.move-template-exercise-up').disabled = index === 0;
+    row.querySelector('.move-template-exercise-down').disabled = index === rows.length - 1;
+  });
+}
 function appendTemplateExercise(value = {}) {
   const row = document.createElement('div'); row.className = 'template-exercise';
-  row.innerHTML = '<label>Exercise<input class="template-exercise-name" maxlength="60" required></label><label>Sets<input class="template-set-count" type="number" min="1" max="20" value="1" required></label><button type="button" class="remove-exercise" aria-label="Remove exercise">×</button>';
+  row.innerHTML = '<label>Exercise<input class="template-exercise-name" maxlength="60" required></label><label>Sets<input class="template-set-count" type="number" min="1" max="20" value="1" required></label><div class="template-exercise-actions"><button type="button" class="move-template-exercise-up" aria-label="Move exercise up">↑</button><button type="button" class="move-template-exercise-down" aria-label="Move exercise down">↓</button><button type="button" class="remove-exercise" aria-label="Remove exercise">×</button></div>';
   row.querySelector('.template-exercise-name').value = value.name || ''; row.querySelector('.template-set-count').value = Number.parseInt(value.setCount, 10) || 1;
-  row.querySelector('.remove-exercise').onclick = () => row.remove(); $('#template-exercises').append(row);
+  row.querySelector('.remove-exercise').onclick = () => { row.remove(); updateTemplateExerciseControls(); };
+  row.querySelector('.move-template-exercise-up').onclick = () => { const previous = row.previousElementSibling; if (previous) { $('#template-exercises').insertBefore(row, previous); updateTemplateExerciseControls(); } };
+  row.querySelector('.move-template-exercise-down').onclick = () => { const next = row.nextElementSibling; if (next) { $('#template-exercises').insertBefore(next, row); updateTemplateExerciseControls(); } };
+  $('#template-exercises').append(row); updateTemplateExerciseControls();
 }
 function renderExerciseCatalog() {
   const category = $('#catalog-category').value;
@@ -216,6 +226,14 @@ async function confirmCompletedWorkoutDelete() {
 }
 
 $('#new-template').onclick = () => openTemplateForm(); $('#statistics').onclick = () => showView('statistics'); $('#settings').onclick = () => showView('settings'); $('#start-template').onclick = startSelectedTemplate; $('#edit-template').onclick = () => openTemplateForm(selectedTemplate);
+$('#duplicate-template').onclick = async () => {
+  if (!selectedTemplate) return;
+  const duplicate = duplicateTemplate(selectedTemplate, templates.map((template) => template.name));
+  await saveTemplate(duplicate);
+  templates = await loadTemplates();
+  selectedTemplate = templates.find((template) => template.id === duplicate.id);
+  renderTemplateDetail();
+};
 $('#workout-detail-back').onclick = () => showView('statistics');
 $('#edit-completed-workout').onclick = openCompletedWorkoutForm;
 $('#delete-completed-workout').onclick = () => { if (!selectedCompletedWorkout) return; $('#delete-workout-message').textContent = `Delete “${selectedCompletedWorkout.name}” from ${formatWhen(selectedCompletedWorkout)}? This cannot be undone.`; $('#delete-workout-guard').hidden = false; $('#cancel-delete-workout').focus(); };

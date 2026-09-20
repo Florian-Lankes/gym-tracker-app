@@ -86,7 +86,11 @@ h3 { margin-bottom: 6px; font-size: 1.05rem; line-height: 1.2; }
 label { display: grid; gap: 6px; margin: 16px 0; color: var(--text); font-size: .86rem; font-weight: 750; }
 input, select { width: 100%; min-height: 48px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); }
 input::placeholder { color: var(--muted); opacity: .9; }
-.template-exercise { display: grid; grid-template-columns: minmax(0, 1fr) 82px 44px; align-items: end; gap: 8px; padding: 12px; }
+.template-exercise { display: grid; grid-template-columns: minmax(0, 1fr) 82px auto; align-items: end; gap: 8px; padding: 12px; }
+.template-exercise-actions { display: grid; grid-template-columns: repeat(3, 40px); gap: 4px; }
+.template-exercise-actions button { width: 40px; height: 48px; border-radius: 10px; background: var(--secondary); color: var(--text); font-size: 1.1rem; font-weight: 800; }
+.template-exercise-actions .remove-exercise { background: var(--danger-surface); color: var(--danger); font-size: 1.5rem; }
+.template-exercise-actions button:disabled { opacity: .5; cursor: not-allowed; }
 .exercise-catalog { margin: 24px 0; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-raised); }
 .exercise-catalog h3, .exercise-catalog .subtle { margin-bottom: 6px; }
 .catalog-controls { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px; }
