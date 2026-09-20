@@ -68,7 +68,7 @@ async function startSelectedTemplate() {
 }
 function renderWorkout() {
   if (!activeSession) return showView('home');
-  $('#workout-title').textContent = activeSession.name; $('#session-start').textContent = `Started ${new Date(activeSession.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`; $('#guard-actions').hidden = true;
+  $('#workout-title').textContent = activeSession.name; $('#session-start').textContent = `Started ${new Date(activeSession.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`; $('#guard-actions').hidden = true; $('#save-workout').hidden = false;
   const list = $('#exercise-list'); list.replaceChildren();
   activeSession.exercises.forEach((exercise) => {
     const card = $('#exercise-template').content.firstElementChild.cloneNode(true); card.querySelector('h3').textContent = exercise.name;
@@ -94,6 +94,8 @@ function renderStatistics() { const names = [...new Set(workouts.flatMap((w) => 
 $('#new-template').onclick = () => openTemplateForm(); $('#statistics').onclick = () => showView('statistics'); $('#settings').onclick = () => showView('settings'); $('#start-template').onclick = startSelectedTemplate; $('#edit-template').onclick = () => openTemplateForm(selectedTemplate);
 $('#delete-template').onclick = async () => { await deleteTemplate(selectedTemplate.id); templates = await loadTemplates(); showView('home'); };
 $('#add-template-exercise').onclick = () => appendTemplateExercise(); $('#template-form').onsubmit = async (event) => { event.preventDefault(); const exercises = [...document.querySelectorAll('.template-exercise')].map((row) => ({ name: row.querySelector('.template-exercise-name').value, setCount: row.querySelector('.template-set-count').value })); const template = createTemplate($('#template-name').value, exercises); if (!template.exercises.length) { $('#template-note').textContent = 'Add at least one exercise.'; return; } const id = $('#template-id').value; await saveTemplate(id ? { ...template, id } : template); templates = await loadTemplates(); selectedTemplate = templates.find((item) => item.id === (id || template.id)); showView('home'); };
-$('#workout-back').onclick = () => { $('#guard-actions').hidden = false; $('#guard-actions').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }; $('#guard-save').onclick = saveCurrentWorkout; $('#save-workout').onclick = saveCurrentWorkout; $('#guard-discard').onclick = discardCurrentWorkout;
+function openWorkoutGuard() { $('#save-workout').hidden = true; $('#guard-actions').hidden = false; $('#guard-save').focus(); }
+function closeWorkoutGuard() { $('#guard-actions').hidden = true; $('#save-workout').hidden = false; $('#workout-back').focus(); }
+$('#workout-back').onclick = openWorkoutGuard; $('#guard-save').onclick = saveCurrentWorkout; $('#save-workout').onclick = saveCurrentWorkout; $('#guard-discard').onclick = discardCurrentWorkout; $('#guard-cancel').onclick = closeWorkoutGuard;
 document.querySelectorAll('[data-back="home"]').forEach((button) => button.onclick = () => showView('home')); $('#chart-exercise').onchange = chart;
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js'); [workouts, templates, activeSession] = await Promise.all([loadWorkouts(), loadTemplates(), loadActiveSession()]); if (activeSession) renderWorkout(); else showView('home');
