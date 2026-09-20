@@ -37,7 +37,21 @@ function renderTemplates() {
     button.onclick = () => { selectedTemplate = template; renderTemplateDetail(); showView('template'); }; list.append(button);
   });
 }
-function renderTemplateDetail() { $('#template-title').textContent = selectedTemplate.name; $('#template-description').textContent = selectedTemplate.exercises.map((exercise) => `${exercise.name} — ${Number.parseInt(exercise.setCount, 10) || 1} sets`).join(' · '); }
+function renderTemplateDetail() {
+  $('#template-title').textContent = selectedTemplate.name;
+  const list = $('#template-exercise-list');
+  list.replaceChildren();
+  selectedTemplate.exercises.forEach((exercise) => {
+    const row = document.createElement('article');
+    row.className = 'template-detail-exercise';
+    const name = document.createElement('strong');
+    const sets = document.createElement('span');
+    name.textContent = exercise.name;
+    sets.textContent = `${Number.parseInt(exercise.setCount, 10) || 1} sets`;
+    row.append(name, sets);
+    list.append(row);
+  });
+}
 function appendTemplateExercise(value = {}) {
   const row = document.createElement('div'); row.className = 'template-exercise';
   row.innerHTML = '<label>Exercise<input class="template-exercise-name" maxlength="60" required></label><label>Sets<input class="template-set-count" type="number" min="1" max="20" value="1" required></label><button type="button" class="remove-exercise" aria-label="Remove exercise">×</button>';
