@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createWorkout, addExercise, addSet, moveExercise, calculateSuggestion, exerciseHistory,
   createTemplate, startTemplate, completeWorkout, completedSessions, prepareActiveSession,
-  discardActiveSession
+  discardActiveSession, copyPreviousSet, adjustSetValue
 } from '../src/data.js';
 
 test('builds an ordered workout with multiple weight and reps sets', () => {
@@ -14,6 +14,26 @@ test('builds an ordered workout with multiple weight and reps sets', () => {
 
   assert.equal(workout.exercises[0].name, 'Bench Press');
   assert.deepEqual(workout.exercises[0].sets, [{ weight: 60, reps: 8 }, { weight: 65, reps: 6 }]);
+});
+
+test('copies only the immediately previous set into a later current set', () => {
+  const exercise = { id: 'bench', name: 'Bench Press', sets: [{ weight: 60, reps: 8 }, { weight: 65, reps: 6 }, { weight: '', reps: '' }] };
+  const workout = { exercises: [exercise] };
+
+  assert.equal(copyPreviousSet(workout, exercise.id, 0), workout);
+  const copiedSecond = copyPreviousSet(workout, exercise.id, 1);
+  assert.deepEqual(copiedSecond.exercises[0].sets[1], { weight: 60, reps: 8 });
+  const copiedThird = copyPreviousSet(copiedSecond, exercise.id, 2);
+  assert.deepEqual(copiedThird.exercises[0].sets[2], { weight: 60, reps: 8 });
+});
+
+test('adjusts set values by their configured increments without crossing minimums', () => {
+  assert.equal(adjustSetValue('', 0.5, 0, 1), 0.5);
+  assert.equal(adjustSetValue(60, 0.5, 0, -1), 59.5);
+  assert.equal(adjustSetValue(0, 0.5, 0, -1), 0);
+  assert.equal(adjustSetValue('', 1, 1, -1), 1);
+  assert.equal(adjustSetValue(8, 1, 1, 1), 9);
+  assert.equal(adjustSetValue(1, 1, 1, -1), 1);
 });
 
 test('moves an exercise within a flexible workout', () => {

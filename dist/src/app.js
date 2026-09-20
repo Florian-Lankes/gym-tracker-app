@@ -1,4 +1,4 @@
-import { createTemplate, startTemplate, completeWorkout, addSet, latestValues, completedSessions } from './data.js';
+import { createTemplate, startTemplate, completeWorkout, addSet, latestValues, completedSessions, copyPreviousSet, adjustSetValue } from './data.js';
 import { loadWorkouts, saveWorkout, loadTemplates, saveTemplate, deleteTemplate, loadActiveSession, saveActiveSession, clearActiveSession } from './db.js';
 import { normalizeTheme, resolveTheme } from './theme.js';
 import { createBackup, mergeBackup, parseBackup } from './backup.js';
@@ -141,9 +141,14 @@ function renderWorkout() {
     const card = $('#exercise-template').content.firstElementChild.cloneNode(true); card.querySelector('h3').textContent = exercise.name;
     const previous = latestValues(workouts, exercise.name); card.querySelector('.previous').textContent = previous ? `Last logged: ${previous.weight} kg × ${previous.reps}` : 'No previous log yet';
     const sets = card.querySelector('.sets'); exercise.sets.forEach((set, index) => {
-      const row = document.createElement('div'); row.className = 'set-row'; row.innerHTML = `<span>Set ${index + 1}</span><label>kg<input type="number" min="0" step="0.5" inputmode="decimal" aria-label="Weight in kilograms"></label><label>reps<input type="number" min="1" step="1" inputmode="numeric" aria-label="Repetitions"></label>`;
+      const row = document.createElement('div'); row.className = 'set-row'; row.innerHTML = `<span>Set ${index + 1}<button type="button" class="copy-set" aria-label="Copy previous set into set ${index + 1}"${index === 0 ? ' disabled' : ''}>Copy previous</button></span><label>kg<div class="numeric-control"><button type="button" data-adjust="weight:-1" aria-label="Decrease weight by 0.5 kilograms">−</button><input type="number" min="0" step="0.5" inputmode="decimal" aria-label="Weight in kilograms"><button type="button" data-adjust="weight:1" aria-label="Increase weight by 0.5 kilograms">+</button></div></label><label>reps<div class="numeric-control"><button type="button" data-adjust="reps:-1" aria-label="Decrease repetitions by 1">−</button><input type="number" min="1" step="1" inputmode="numeric" aria-label="Repetitions"><button type="button" data-adjust="reps:1" aria-label="Increase repetitions by 1">+</button></div></label>`;
       const [weight, reps] = row.querySelectorAll('input'); weight.value = set.weight ?? ''; reps.value = set.reps ?? '';
-      weight.oninput = async () => { set.weight = weight.value; await persistActive(); }; reps.oninput = async () => { set.reps = reps.value; await persistActive(); }; sets.append(row);
+      const currentSet = () => activeSession.exercises.find((item) => item.id === exercise.id).sets[index];
+      weight.oninput = async () => { currentSet().weight = weight.value; await persistActive(); };
+      reps.oninput = async () => { currentSet().reps = reps.value; await persistActive(); };
+      row.querySelector('.copy-set').onclick = async () => { activeSession = copyPreviousSet(activeSession, exercise.id, index); await persistActive(); renderWorkout(); };
+      row.querySelectorAll('[data-adjust]').forEach((button) => { button.onclick = async () => { const [field, direction] = button.dataset.adjust.split(':'); const input = field === 'weight' ? weight : reps; const next = adjustSetValue(input.value, field === 'weight' ? 0.5 : 1, field === 'weight' ? 0 : 1, Number(direction)); input.value = next; currentSet()[field] = next; await persistActive(); }; });
+      sets.append(row);
     }); list.append(card);
   }); showView('workout');
 }
