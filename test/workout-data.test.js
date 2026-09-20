@@ -4,7 +4,7 @@ import {
   createWorkout, addExercise, addSet, moveExercise, calculateSuggestion, exerciseHistory,
   createTemplate, startTemplate, completeWorkout, completedSessions, prepareActiveSession,
   discardActiveSession, copyPreviousSet, adjustSetValue, reviseCompletedWorkout, removeCompletedWorkout,
-  duplicateTemplate, moveTemplateExercise
+  duplicateTemplate, moveTemplateExercise, setWorkoutNote, setExerciseNote
 } from '../src/data.js';
 
 test('builds an ordered workout with multiple weight and reps sets', () => {
@@ -188,4 +188,24 @@ test('removes only the selected completed workout and leaves a cancelled edit un
   assert.deepEqual(removeCompletedWorkout(workouts, 'one').map((workout) => workout.id), ['two']);
   assert.equal(removeCompletedWorkout(workouts, 'missing'), workouts);
   assert.deepEqual(workouts.map((workout) => workout.id), ['one', 'two']);
+});
+
+test('keeps optional session and exercise notes through active, completed, revised, and legacy workouts', () => {
+  const active = startTemplate(createTemplate('Push', [{ name: 'Bench Press', setCount: 1 }]), '2026-09-20T10:00:00.000Z');
+  const notedActive = setExerciseNote(setWorkoutNote(active, 'Felt strong'), active.exercises[0].id, 'Pause at chest');
+  const completed = completeWorkout(notedActive, '2026-09-20T10:30:00.000Z');
+  const revised = reviseCompletedWorkout(completed, {
+    note: 'Keep elbows tucked',
+    exercises: [{ ...completed.exercises[0], note: 'Use a spotter' }]
+  });
+
+  assert.equal(notedActive.note, 'Felt strong');
+  assert.equal(notedActive.exercises[0].note, 'Pause at chest');
+  assert.equal(completed.note, 'Felt strong');
+  assert.equal(completed.exercises[0].note, 'Pause at chest');
+  assert.equal(revised.note, 'Keep elbows tucked');
+  assert.equal(revised.exercises[0].note, 'Use a spotter');
+  assert.equal(setWorkoutNote(revised, '   ').note, undefined);
+  assert.equal(setExerciseNote(revised, revised.exercises[0].id, '').exercises[0].note, undefined);
+  assert.equal(setWorkoutNote({ id: 'legacy', exercises: [] }, 'Legacy note').note, 'Legacy note');
 });

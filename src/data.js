@@ -47,6 +47,14 @@ export function startTemplate(template, startedAt = new Date().toISOString()) {
 
 export function prepareActiveSession(activeSession, template) { return activeSession || startTemplate(template); }
 export function discardActiveSession() { return null; }
+function withOptionalNote(record, note) {
+  if (typeof note !== 'string' || !note.trim()) { const { note: _note, ...withoutNote } = record; return withoutNote; }
+  return { ...record, note };
+}
+export function setWorkoutNote(workout, note) { return withOptionalNote(workout, note); }
+export function setExerciseNote(workout, exerciseId, note) {
+  return { ...workout, exercises: workout.exercises.map((exercise) => exercise.id === exerciseId ? withOptionalNote(exercise, note) : exercise) };
+}
 
 export function completeWorkout(workout, completedAt = new Date().toISOString()) {
   const startedAt = workout.startedAt || workout.performedAt || completedAt;

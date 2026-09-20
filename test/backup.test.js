@@ -87,3 +87,25 @@ test('backs up reminder settings and migrates existing version 1 backups safely'
   const merged = mergeBackup({ templates: [], workouts: [], activeSession: null, theme: null, reminder: null }, withReminder);
   assert.deepEqual(merged.reminder, { interval: 5, completedWorkoutIds: ['workout-1'] });
 });
+
+test('round-trips optional workout and exercise notes without changing legacy records', () => {
+  const notedWorkout = {
+    ...legacyWorkout,
+    id: 'workout-2',
+    note: 'Session note',
+    exercises: [{ ...legacyWorkout.exercises[0], id: 'exercise-4', note: 'Exercise note' }]
+  };
+  const backup = createBackup({ templates: [], workouts: [legacyWorkout, notedWorkout], activeSession, theme: 'system' });
+  const parsed = parseBackup(JSON.stringify(backup));
+  const restored = mergeBackup({ templates: [], workouts: [], activeSession: null, theme: null, reminder: null }, parsed);
+
+  assert.equal(restored.workouts[0].note, undefined);
+  assert.equal(restored.workouts[0].exercises[0].note, undefined);
+  assert.equal(restored.workouts[1].note, 'Session note');
+  assert.equal(restored.workouts[1].exercises[0].note, 'Exercise note');
+  assert.deepEqual(restored.activeSession, activeSession);
+
+  const malformedNotes = structuredClone(backup);
+  malformedNotes.data.workouts[1].note = { text: 'not plain text' };
+  assert.equal(parseBackup(JSON.stringify(malformedNotes)), null);
+});

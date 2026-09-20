@@ -1,4 +1,4 @@
-import { createTemplate, duplicateTemplate, startTemplate, completeWorkout, addSet, latestValues, completedSessions, copyPreviousSet, adjustSetValue, reviseCompletedWorkout } from './data.js';
+import { createTemplate, duplicateTemplate, startTemplate, completeWorkout, addSet, latestValues, completedSessions, copyPreviousSet, adjustSetValue, reviseCompletedWorkout, setWorkoutNote, setExerciseNote } from './data.js';
 import { loadWorkouts, saveWorkout, deleteWorkout, loadTemplates, saveTemplate, deleteTemplate, loadActiveSession, saveActiveSession, clearActiveSession } from './db.js';
 import { normalizeTheme, resolveTheme } from './theme.js';
 import { createBackup, mergeBackup, parseBackup } from './backup.js';
@@ -164,11 +164,12 @@ async function startSelectedTemplate() {
 }
 function renderWorkout() {
   if (!activeSession) return showView('home');
-  $('#workout-title').textContent = activeSession.name; $('#session-start').textContent = `Started ${new Date(activeSession.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`; $('#guard-actions').hidden = true; $('#save-workout').hidden = false;
+  $('#workout-title').textContent = activeSession.name; $('#session-start').textContent = `Started ${new Date(activeSession.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`; $('#workout-note').value = activeSession.note || ''; $('#workout-note').oninput = async () => { activeSession = setWorkoutNote(activeSession, $('#workout-note').value); await persistActive(); }; $('#guard-actions').hidden = true; $('#save-workout').hidden = false;
   const list = $('#exercise-list'); list.replaceChildren();
   activeSession.exercises.forEach((exercise) => {
     const card = $('#exercise-template').content.firstElementChild.cloneNode(true); card.querySelector('h3').textContent = exercise.name;
     const previous = latestValues(workouts, exercise.name); card.querySelector('.previous').textContent = previous ? `Last logged: ${previous.weight} kg × ${previous.reps}` : 'No previous log yet';
+    const exerciseNote = card.querySelector('.exercise-note'); exerciseNote.value = exercise.note || ''; exerciseNote.oninput = async () => { activeSession = setExerciseNote(activeSession, exercise.id, exerciseNote.value); await persistActive(); };
     const sets = card.querySelector('.sets'); exercise.sets.forEach((set, index) => {
       const row = document.createElement('div'); row.className = 'set-row'; row.innerHTML = `<span>Set ${index + 1}<button type="button" class="copy-set" aria-label="Copy previous set into set ${index + 1}"${index === 0 ? ' disabled' : ''}>Copy previous</button></span><label>kg<div class="numeric-control"><button type="button" data-adjust="weight:-1" aria-label="Decrease weight by 0.5 kilograms">−</button><input type="number" min="0" step="0.5" inputmode="decimal" aria-label="Weight in kilograms"><button type="button" data-adjust="weight:1" aria-label="Increase weight by 0.5 kilograms">+</button></div></label><label>reps<div class="numeric-control"><button type="button" data-adjust="reps:-1" aria-label="Decrease repetitions by 1">−</button><input type="number" min="1" step="1" inputmode="numeric" aria-label="Repetitions"><button type="button" data-adjust="reps:1" aria-label="Increase repetitions by 1">+</button></div></label>`;
       const [weight, reps] = row.querySelectorAll('input'); weight.value = set.weight ?? ''; reps.value = set.reps ?? '';
@@ -196,19 +197,21 @@ function renderCompletedWorkoutDetail() {
   if (!selectedCompletedWorkout) return showView('statistics');
   $('#completed-workout-title').textContent = selectedCompletedWorkout.name;
   $('#completed-workout-when').textContent = `${formatWhen(selectedCompletedWorkout)} · ${formatDuration(selectedCompletedWorkout.durationSeconds)}`;
+  const sessionNote = $('#completed-workout-session-note'); sessionNote.hidden = !selectedCompletedWorkout.note; sessionNote.textContent = selectedCompletedWorkout.note || '';
   const list = $('#completed-workout-exercises'); list.replaceChildren();
   selectedCompletedWorkout.exercises.forEach((exercise) => {
     const card = document.createElement('article'); card.className = 'exercise-card';
     const title = document.createElement('h3'); title.textContent = exercise.name;
     const sets = document.createElement('p'); sets.className = 'subtle'; sets.textContent = exercise.sets.map((set, index) => `Set ${index + 1}: ${set.weight} kg × ${set.reps}`).join(' · ');
-    card.append(title, sets); list.append(card);
+    card.append(title, sets); if (exercise.note) { const note = document.createElement('p'); note.className = 'workout-note-display'; note.textContent = exercise.note; card.append(note); } list.append(card);
   });
 }
 function localDateTimeValue(value) { const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 function appendCompletedWorkoutExercise(exercise = { id: crypto.randomUUID(), name: '', sets: [{ weight: '', reps: '' }] }) {
   const card = document.createElement('fieldset'); card.className = 'completed-exercise-edit';
-  card.innerHTML = '<legend>Exercise</legend><label>Name<input class="completed-exercise-name" maxlength="60" required></label><div class="completed-set-list"></div><button class="secondary add-completed-set" type="button">Add set</button><button class="secondary danger remove-completed-exercise" type="button">Remove exercise</button>';
+  card.innerHTML = '<legend>Exercise</legend><label>Name<input class="completed-exercise-name" maxlength="60" required></label><label>Note (optional)<textarea class="completed-exercise-note" maxlength="1000" rows="3"></textarea></label><div class="completed-set-list"></div><button class="secondary add-completed-set" type="button">Add set</button><button class="secondary danger remove-completed-exercise" type="button">Remove exercise</button>';
   card.querySelector('.completed-exercise-name').value = exercise.name;
+  card.querySelector('.completed-exercise-note').value = exercise.note || '';
   const appendSet = (set = { weight: '', reps: '' }) => {
     const row = document.createElement('div'); row.className = 'completed-set-edit';
     row.innerHTML = '<label>Weight (kg)<input class="completed-set-weight" type="number" min="0" step="0.5" inputmode="decimal" required></label><label>Reps<input class="completed-set-reps" type="number" min="1" step="1" inputmode="numeric" required></label><button class="remove-completed-set" type="button" aria-label="Remove set">×</button>';
@@ -225,6 +228,7 @@ function openCompletedWorkoutForm() {
   if (!selectedCompletedWorkout) return showView('statistics');
   $('#completed-workout-form-title').textContent = selectedCompletedWorkout.name;
   $('#completed-workout-at').value = localDateTimeValue(selectedCompletedWorkout.completedAt || selectedCompletedWorkout.performedAt);
+  $('#completed-workout-session-note-input').value = selectedCompletedWorkout.note || '';
   $('#completed-workout-edit-exercises').replaceChildren(); selectedCompletedWorkout.exercises.forEach(appendCompletedWorkoutExercise);
   $('#completed-workout-note').textContent = ''; showView('completed-workout-form');
 }
@@ -232,11 +236,13 @@ async function saveCompletedWorkoutChanges(event) {
   event.preventDefault();
   const completedAt = new Date($('#completed-workout-at').value);
   const exercises = [...document.querySelectorAll('.completed-exercise-edit')].map((card) => ({
-    id: crypto.randomUUID(), name: card.querySelector('.completed-exercise-name').value.trim(),
+    id: crypto.randomUUID(), name: card.querySelector('.completed-exercise-name').value.trim(), note: card.querySelector('.completed-exercise-note').value,
     sets: [...card.querySelectorAll('.completed-set-edit')].map((row) => ({ weight: Number(row.querySelector('.completed-set-weight').value), reps: Number(row.querySelector('.completed-set-reps').value) }))
   })).filter((exercise) => exercise.name && exercise.sets.length);
   if (Number.isNaN(completedAt.getTime()) || !exercises.length || exercises.some((exercise) => exercise.sets.some((set) => set.weight < 0 || set.reps <= 0))) { $('#completed-workout-note').textContent = 'Add at least one named exercise with valid weight and reps.'; return; }
   selectedCompletedWorkout = reviseCompletedWorkout(selectedCompletedWorkout, { completedAt: completedAt.toISOString(), exercises });
+  selectedCompletedWorkout = setWorkoutNote(selectedCompletedWorkout, $('#completed-workout-session-note-input').value);
+  exercises.forEach((exercise) => { selectedCompletedWorkout = setExerciseNote(selectedCompletedWorkout, exercise.id, exercise.note); });
   await saveWorkout(selectedCompletedWorkout); workouts = await loadWorkouts(); renderCompletedWorkoutDetail(); showView('workout-detail');
 }
 async function confirmCompletedWorkoutDelete() {

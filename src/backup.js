@@ -7,11 +7,14 @@ const themes = new Set(['system', 'light', 'dark']);
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const hasId = (value) => typeof value?.id === 'string' && value.id.trim().length > 0;
 const isSet = (set) => isObject(set) && ['string', 'number'].includes(typeof set.weight) && ['string', 'number'].includes(typeof set.reps);
+const hasOptionalPlainTextNote = (record) => !Object.hasOwn(record, 'note') || typeof record.note === 'string';
 const isExercise = (exercise) => isObject(exercise)
+  && hasOptionalPlainTextNote(exercise)
   && typeof exercise.name === 'string'
   && Array.isArray(exercise.sets)
   && exercise.sets.every(isSet);
 const isRecord = (record) => isObject(record)
+  && hasOptionalPlainTextNote(record)
   && hasId(record)
   && typeof record.name === 'string'
   && Array.isArray(record.exercises)
