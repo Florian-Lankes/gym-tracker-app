@@ -23,6 +23,10 @@ Open the local URL in a browser. The service worker is enabled for the productio
     npm test
     npm run build
 
+## Touch interaction
+
+The app uses `touch-action: manipulation` on its shell to reduce accidental double-tap zoom in browsers that support this CSS behavior. Pinch zoom remains enabled; browser support determines whether double-tap zoom is suppressed.
+
 ## Privacy
 
 Lift Log has no accounts, backend, analytics, cloud sync, or sharing. Workout data is stored only in this browser's IndexedDB on this device. Clearing browser/site data removes it.
