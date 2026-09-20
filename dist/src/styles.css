@@ -118,6 +118,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .9; }
 .copy-set:disabled { opacity: .55; cursor: not-allowed; }
 .set-row input { min-width: 0; min-height: 44px; padding: 8px; font-size: 1rem; font-weight: 750; }
 .guard { position: fixed; z-index: 10; inset: 0; display: flex; align-items: end; padding: 20px; background: rgba(5, 17, 15, .52); }
+.guard[hidden] { display: none !important; }
 .guard-sheet { width: min(100%, 580px); margin: 0 auto; padding: 20px; border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border)); border-radius: 16px; background: var(--danger-surface); box-shadow: 0 -12px 36px rgba(0, 0, 0, .25); }
 .guard-sheet h3 { margin-bottom: 8px; }
 .guard-sheet p { margin-bottom: 12px; font-weight: 700; }
