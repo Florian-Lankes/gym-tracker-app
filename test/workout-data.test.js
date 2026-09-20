@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createWorkout, addExercise, addSet, moveExercise, calculateSuggestion, exerciseHistory,
   createTemplate, startTemplate, completeWorkout, completedSessions, prepareActiveSession,
-  discardActiveSession, copyPreviousSet, adjustSetValue
+  discardActiveSession, copyPreviousSet, adjustSetValue, reviseCompletedWorkout, removeCompletedWorkout
 } from '../src/data.js';
 
 test('builds an ordered workout with multiple weight and reps sets', () => {
@@ -122,4 +122,32 @@ test('orders chart history chronologically across month boundaries', () => {
     { id: 'sep', performedAt: '2025-09-30T10:00:00.000Z', exercises: [{ id: '2', name: 'Deadlift', sets: [{ weight: 95, reps: 5 }] }] }
   ];
   assert.deepEqual(exerciseHistory(workouts, 'Deadlift').map((point) => point.date), ['Sep 30', 'Oct 1']);
+});
+
+test('revises a completed workout while preserving its id and recalculating duration', () => {
+  const completed = completeWorkout({
+    id: 'completed', name: 'Push day', startedAt: '2026-09-19T10:00:00.000Z',
+    exercises: [{ id: 'bench', name: 'Bench Press', sets: [{ weight: 60, reps: 8 }] }]
+  }, '2026-09-19T11:00:00.000Z');
+  const revised = reviseCompletedWorkout(completed, {
+    completedAt: '2026-09-20T12:30:00.000Z',
+    exercises: [{ id: 'bench', name: 'Bench Press', sets: [{ weight: 65, reps: 6 }] }]
+  });
+
+  assert.equal(revised.id, 'completed');
+  assert.equal(revised.completedAt, '2026-09-20T12:30:00.000Z');
+  assert.equal(revised.durationSeconds, 95400);
+  assert.deepEqual(revised.exercises[0].sets, [{ weight: 65, reps: 6 }]);
+  assert.deepEqual(completed.exercises[0].sets, [{ weight: 60, reps: 8 }]);
+});
+
+test('removes only the selected completed workout and leaves a cancelled edit unchanged', () => {
+  const workouts = [
+    { id: 'one', completedAt: '2026-09-19T10:00:00.000Z', exercises: [] },
+    { id: 'two', completedAt: '2026-09-20T10:00:00.000Z', exercises: [] }
+  ];
+
+  assert.deepEqual(removeCompletedWorkout(workouts, 'one').map((workout) => workout.id), ['two']);
+  assert.equal(removeCompletedWorkout(workouts, 'missing'), workouts);
+  assert.deepEqual(workouts.map((workout) => workout.id), ['one', 'two']);
 });

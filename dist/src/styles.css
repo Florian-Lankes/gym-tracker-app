@@ -130,5 +130,15 @@ canvas { display: block; width: 100%; height: auto; max-width: 100%; }
 .progress-metrics p { grid-column: 1 / -1; margin: 0; }
 #overview-list .history-card strong { display: block; margin-bottom: 6px; }
 #overview-list .history-card p { margin-bottom: 0; }
+.history-button { width: 100%; color: var(--text); text-align: left; }
+.history-button:hover { border-color: var(--accent); background: var(--surface-raised); }
+.completed-exercise-edit { margin: 16px 0; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.completed-exercise-edit legend { padding: 0 6px; color: var(--muted); font-size: .8rem; font-weight: 800; }
+.completed-exercise-edit label { margin: 8px 0; }
+.completed-set-edit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; align-items: end; gap: 8px; }
+.completed-set-edit label { min-width: 0; }
+.remove-completed-set { width: 44px; min-height: 48px; border-radius: 10px; background: var(--danger-surface); color: var(--danger); font-size: 1.5rem; font-weight: 700; }
+.completed-exercise-edit .secondary { margin-top: 8px; }
+.danger-action { background: var(--danger); color: var(--accent-text); }
 @media (max-width: 380px) { .app-shell { padding-inline: 16px; } .template-exercise { grid-template-columns: minmax(0, 1fr) 72px 44px; gap: 6px; } .set-row { grid-template-columns: 62px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; } .numeric-control { grid-template-columns: 34px minmax(0, 1fr) 34px; gap: 3px; } .numeric-control button { min-width: 34px; } .statistics-controls, .progress-metrics, .catalog-controls, #catalog-results { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }

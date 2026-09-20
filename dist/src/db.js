@@ -23,6 +23,7 @@ function put(store, value) { return database().then((db) => new Promise((resolve
 function remove(store, id) { return database().then((db) => new Promise((resolve, reject) => { const request = db.transaction(store, 'readwrite').objectStore(store).delete(id); request.onsuccess = () => resolve(); request.onerror = () => reject(request.error); })); }
 export async function loadWorkouts() { return (await readAll(WORKOUT_STORE)).sort((a, b) => new Date(b.completedAt || b.performedAt) - new Date(a.completedAt || a.performedAt)); }
 export function saveWorkout(workout) { return put(WORKOUT_STORE, workout); }
+export function deleteWorkout(id) { return remove(WORKOUT_STORE, id); }
 export function loadTemplates() { return readAll(TEMPLATE_STORE); }
 export function saveTemplate(template) { return put(TEMPLATE_STORE, template); }
 export function deleteTemplate(id) { return remove(TEMPLATE_STORE, id); }

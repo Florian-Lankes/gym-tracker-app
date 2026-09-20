@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { exerciseStatistics, filterCompletedWorkouts } from '../src/statistics.js';
+import { reviseCompletedWorkout, removeCompletedWorkout } from '../src/data.js';
 
 const workouts = [
   {
@@ -57,4 +58,16 @@ test('returns empty statistics when an exercise has no completed logged sets', (
     estimateLabel: 'Estimated 1RM',
     points: []
   });
+});
+
+test('recalculates statistics after a completed workout is edited or deleted', () => {
+  const original = workouts.find((workout) => workout.id === 'recent-bench');
+  const edited = reviseCompletedWorkout(original, {
+    completedAt: original.completedAt,
+    exercises: [{ id: 'bench-2', name: 'Bench Press', sets: [{ weight: 80, reps: 5 }] }]
+  });
+  const afterEdit = workouts.map((workout) => workout.id === edited.id ? edited : workout);
+
+  assert.equal(exerciseStatistics(afterEdit, 'Bench Press').totalVolume, 1230);
+  assert.equal(exerciseStatistics(removeCompletedWorkout(afterEdit, edited.id), 'Bench Press').totalVolume, 830);
 });

@@ -34,6 +34,14 @@ export function completeWorkout(workout, completedAt = new Date().toISOString())
   const startedAt = workout.startedAt || workout.performedAt || completedAt;
   return { ...workout, startedAt, completedAt, durationSeconds: Math.max(0, Math.round((new Date(completedAt) - new Date(startedAt)) / 1000)) };
 }
+export function reviseCompletedWorkout(workout, changes) {
+  const completedAt = changes.completedAt || workout.completedAt || workout.performedAt;
+  return completeWorkout({ ...workout, ...changes, completedAt }, completedAt);
+}
+export function removeCompletedWorkout(workouts, id) {
+  const remaining = workouts.filter((workout) => workout.id !== id);
+  return remaining.length === workouts.length ? workouts : remaining;
+}
 export function completedSessions(workouts) { return [...workouts].sort((a, b) => new Date(b.completedAt || b.performedAt) - new Date(a.completedAt || a.performedAt)); }
 export function addExercise(workout, name) { const cleanName = name.trim(); return cleanName ? { ...workout, exercises: [...workout.exercises, { id: uid(), name: cleanName, sets: [] }] } : workout; }
 export function addSet(workout, exerciseId, set = blankSet()) { return { ...workout, exercises: workout.exercises.map((exercise) => exercise.id === exerciseId ? { ...exercise, sets: [...exercise.sets, set] } : exercise) }; }

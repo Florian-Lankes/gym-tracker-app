@@ -1,13 +1,13 @@
-import { createTemplate, startTemplate, completeWorkout, addSet, latestValues, completedSessions, copyPreviousSet, adjustSetValue } from './data.js';
-import { loadWorkouts, saveWorkout, loadTemplates, saveTemplate, deleteTemplate, loadActiveSession, saveActiveSession, clearActiveSession } from './db.js';
+import { createTemplate, startTemplate, completeWorkout, addSet, latestValues, completedSessions, copyPreviousSet, adjustSetValue, reviseCompletedWorkout } from './data.js';
+import { loadWorkouts, saveWorkout, deleteWorkout, loadTemplates, saveTemplate, deleteTemplate, loadActiveSession, saveActiveSession, clearActiveSession } from './db.js';
 import { normalizeTheme, resolveTheme } from './theme.js';
 import { createBackup, mergeBackup, parseBackup } from './backup.js';
 import { exerciseStatistics } from './statistics.js';
 import { EXERCISE_CATALOG, catalogCategories, searchCatalog } from './exercise-catalog.js';
 
 const $ = (selector) => document.querySelector(selector);
-let workouts = [], templates = [], activeSession = null, selectedTemplate = null;
-const views = ['home', 'template', 'template-form', 'workout', 'statistics', 'settings'];
+let workouts = [], templates = [], activeSession = null, selectedTemplate = null, selectedCompletedWorkout = null;
+const views = ['home', 'template', 'template-form', 'workout', 'statistics', 'settings', 'workout-detail', 'completed-workout-form'];
 const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
 function applyTheme(preference) {
   const normalized = normalizeTheme(preference);
@@ -161,9 +161,70 @@ async function saveCurrentWorkout() {
 }
 async function discardCurrentWorkout() { await clearActiveSession(); activeSession = null; showView('home'); }
 function chart(points) { const canvas = $('#progress-chart'), ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); $('#chart-empty').hidden = Boolean(points.length); if (!points.length) return; const pad = 32, max = Math.max(...points.map((p) => p.weight), 1), min = Math.min(...points.map((p) => p.weight), max - 1), range = max - min || 1; const x = (i) => pad + i * ((canvas.width - pad * 2) / Math.max(points.length - 1, 1)), y = (p) => canvas.height - pad - ((p.weight - min) / range) * (canvas.height - pad * 2); ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--chart').trim(); ctx.lineWidth = 3; ctx.beginPath(); points.forEach((p, i) => i ? ctx.lineTo(x(i), y(p)) : ctx.moveTo(x(i), y(p))); ctx.stroke(); }
-function renderStatistics() { const names = [...new Set(completedSessions(workouts).flatMap((w) => w.exercises.map((e) => e.name)))].sort(), select = $('#chart-exercise'), chosen = select.value; select.replaceChildren(...names.map((name) => new Option(name, name, false, name === chosen))); if (names.length && !select.value) select.value = names[0]; const stats = exerciseStatistics(workouts, select.value, $('#statistics-period').value); chart(stats.points); const metrics = $('#progress-metrics'); metrics.replaceChildren(); if (stats.bestWeight) { [['Best weight', `${stats.bestWeight.weight} kg × ${stats.bestRepsAtBestWeight}`], ['Total volume', `${stats.totalVolume} kg`], [stats.estimateLabel, `${stats.estimatedOneRepMax} kg`]].forEach(([label, value]) => { const item = document.createElement('div'); item.innerHTML = '<span></span><strong></strong>'; item.querySelector('span').textContent = label; item.querySelector('strong').textContent = value; metrics.append(item); }); } else metrics.innerHTML = '<p class="subtle">Choose an exercise with completed logged sets to see progress.</p>'; const list = $('#overview-list'); list.replaceChildren(); completedSessions(workouts).forEach((session) => { const card = document.createElement('article'); card.className = 'history-card'; card.innerHTML = `<strong></strong><p class="subtle"></p>`; card.querySelector('strong').textContent = session.name; card.querySelector('p').textContent = `${formatWhen(session)} · ${formatDuration(session.durationSeconds)}`; list.append(card); }); if (!workouts.length) list.innerHTML = '<p class="subtle">No completed workouts yet.</p>'; }
+function renderStatistics() { const names = [...new Set(completedSessions(workouts).flatMap((w) => w.exercises.map((e) => e.name)))].sort(), select = $('#chart-exercise'), chosen = select.value; select.replaceChildren(...names.map((name) => new Option(name, name, false, name === chosen))); if (names.length && !select.value) select.value = names[0]; const stats = exerciseStatistics(workouts, select.value, $('#statistics-period').value); chart(stats.points); const metrics = $('#progress-metrics'); metrics.replaceChildren(); if (stats.bestWeight) { [['Best weight', `${stats.bestWeight.weight} kg × ${stats.bestRepsAtBestWeight}`], ['Total volume', `${stats.totalVolume} kg`], [stats.estimateLabel, `${stats.estimatedOneRepMax} kg`]].forEach(([label, value]) => { const item = document.createElement('div'); item.innerHTML = '<span></span><strong></strong>'; item.querySelector('span').textContent = label; item.querySelector('strong').textContent = value; metrics.append(item); }); } else metrics.innerHTML = '<p class="subtle">Choose an exercise with completed logged sets to see progress.</p>'; const list = $('#overview-list'); list.replaceChildren(); completedSessions(workouts).forEach((session) => { const card = document.createElement('button'); card.type = 'button'; card.className = 'history-card history-button'; card.innerHTML = `<strong></strong><p class="subtle"></p>`; card.querySelector('strong').textContent = session.name; card.querySelector('p').textContent = `${formatWhen(session)} · ${formatDuration(session.durationSeconds)}`; card.onclick = () => { selectedCompletedWorkout = session; renderCompletedWorkoutDetail(); showView('workout-detail'); }; list.append(card); }); if (!workouts.length) list.innerHTML = '<p class="subtle">No completed workouts yet.</p>'; }
+
+function renderCompletedWorkoutDetail() {
+  if (!selectedCompletedWorkout) return showView('statistics');
+  $('#completed-workout-title').textContent = selectedCompletedWorkout.name;
+  $('#completed-workout-when').textContent = `${formatWhen(selectedCompletedWorkout)} · ${formatDuration(selectedCompletedWorkout.durationSeconds)}`;
+  const list = $('#completed-workout-exercises'); list.replaceChildren();
+  selectedCompletedWorkout.exercises.forEach((exercise) => {
+    const card = document.createElement('article'); card.className = 'exercise-card';
+    const title = document.createElement('h3'); title.textContent = exercise.name;
+    const sets = document.createElement('p'); sets.className = 'subtle'; sets.textContent = exercise.sets.map((set, index) => `Set ${index + 1}: ${set.weight} kg × ${set.reps}`).join(' · ');
+    card.append(title, sets); list.append(card);
+  });
+}
+function localDateTimeValue(value) { const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+function appendCompletedWorkoutExercise(exercise = { id: crypto.randomUUID(), name: '', sets: [{ weight: '', reps: '' }] }) {
+  const card = document.createElement('fieldset'); card.className = 'completed-exercise-edit';
+  card.innerHTML = '<legend>Exercise</legend><label>Name<input class="completed-exercise-name" maxlength="60" required></label><div class="completed-set-list"></div><button class="secondary add-completed-set" type="button">Add set</button><button class="secondary danger remove-completed-exercise" type="button">Remove exercise</button>';
+  card.querySelector('.completed-exercise-name').value = exercise.name;
+  const appendSet = (set = { weight: '', reps: '' }) => {
+    const row = document.createElement('div'); row.className = 'completed-set-edit';
+    row.innerHTML = '<label>Weight (kg)<input class="completed-set-weight" type="number" min="0" step="0.5" inputmode="decimal" required></label><label>Reps<input class="completed-set-reps" type="number" min="1" step="1" inputmode="numeric" required></label><button class="remove-completed-set" type="button" aria-label="Remove set">×</button>';
+    row.querySelector('.completed-set-weight').value = set.weight ?? ''; row.querySelector('.completed-set-reps').value = set.reps ?? '';
+    card.querySelector('.completed-set-list').append(row);
+  };
+  (exercise.sets.length ? exercise.sets : [{ weight: '', reps: '' }]).forEach(appendSet);
+  card.querySelector('.add-completed-set').onclick = () => appendSet();
+  card.querySelector('.remove-completed-exercise').onclick = () => card.remove();
+  card.addEventListener('click', (event) => { if (event.target.classList.contains('remove-completed-set')) event.target.closest('.completed-set-edit').remove(); });
+  $('#completed-workout-edit-exercises').append(card);
+}
+function openCompletedWorkoutForm() {
+  if (!selectedCompletedWorkout) return showView('statistics');
+  $('#completed-workout-form-title').textContent = selectedCompletedWorkout.name;
+  $('#completed-workout-at').value = localDateTimeValue(selectedCompletedWorkout.completedAt || selectedCompletedWorkout.performedAt);
+  $('#completed-workout-edit-exercises').replaceChildren(); selectedCompletedWorkout.exercises.forEach(appendCompletedWorkoutExercise);
+  $('#completed-workout-note').textContent = ''; showView('completed-workout-form');
+}
+async function saveCompletedWorkoutChanges(event) {
+  event.preventDefault();
+  const completedAt = new Date($('#completed-workout-at').value);
+  const exercises = [...document.querySelectorAll('.completed-exercise-edit')].map((card) => ({
+    id: crypto.randomUUID(), name: card.querySelector('.completed-exercise-name').value.trim(),
+    sets: [...card.querySelectorAll('.completed-set-edit')].map((row) => ({ weight: Number(row.querySelector('.completed-set-weight').value), reps: Number(row.querySelector('.completed-set-reps').value) }))
+  })).filter((exercise) => exercise.name && exercise.sets.length);
+  if (Number.isNaN(completedAt.getTime()) || !exercises.length || exercises.some((exercise) => exercise.sets.some((set) => set.weight < 0 || set.reps <= 0))) { $('#completed-workout-note').textContent = 'Add at least one named exercise with valid weight and reps.'; return; }
+  selectedCompletedWorkout = reviseCompletedWorkout(selectedCompletedWorkout, { completedAt: completedAt.toISOString(), exercises });
+  await saveWorkout(selectedCompletedWorkout); workouts = await loadWorkouts(); renderCompletedWorkoutDetail(); showView('workout-detail');
+}
+async function confirmCompletedWorkoutDelete() {
+  if (!selectedCompletedWorkout) return;
+  await deleteWorkout(selectedCompletedWorkout.id); workouts = await loadWorkouts(); selectedCompletedWorkout = null; $('#delete-workout-guard').hidden = true; showView('statistics');
+}
 
 $('#new-template').onclick = () => openTemplateForm(); $('#statistics').onclick = () => showView('statistics'); $('#settings').onclick = () => showView('settings'); $('#start-template').onclick = startSelectedTemplate; $('#edit-template').onclick = () => openTemplateForm(selectedTemplate);
+$('#workout-detail-back').onclick = () => showView('statistics');
+$('#edit-completed-workout').onclick = openCompletedWorkoutForm;
+$('#delete-completed-workout').onclick = () => { if (!selectedCompletedWorkout) return; $('#delete-workout-message').textContent = `Delete “${selectedCompletedWorkout.name}” from ${formatWhen(selectedCompletedWorkout)}? This cannot be undone.`; $('#delete-workout-guard').hidden = false; $('#cancel-delete-workout').focus(); };
+$('#cancel-delete-workout').onclick = () => { $('#delete-workout-guard').hidden = true; $('#delete-completed-workout').focus(); };
+$('#confirm-delete-workout').onclick = confirmCompletedWorkoutDelete;
+$('#completed-workout-form-back').onclick = () => { renderCompletedWorkoutDetail(); showView('workout-detail'); };
+$('#add-completed-exercise').onclick = () => appendCompletedWorkoutExercise();
+$('#completed-workout-form').onsubmit = saveCompletedWorkoutChanges;
+
 $('#delete-template').onclick = async () => { await deleteTemplate(selectedTemplate.id); templates = await loadTemplates(); showView('home'); };
 $('#add-template-exercise').onclick = () => appendTemplateExercise(); $('#template-form').onsubmit = async (event) => { event.preventDefault(); const exercises = [...document.querySelectorAll('.template-exercise')].map((row) => ({ name: row.querySelector('.template-exercise-name').value, setCount: row.querySelector('.template-set-count').value })); const template = createTemplate($('#template-name').value, exercises); if (!template.exercises.length) { $('#template-note').textContent = 'Add at least one exercise.'; return; } const id = $('#template-id').value; await saveTemplate(id ? { ...template, id } : template); templates = await loadTemplates(); selectedTemplate = templates.find((item) => item.id === (id || template.id)); showView('home'); };
 $('#catalog-search').oninput = renderExerciseCatalog; $('#catalog-category').onchange = renderExerciseCatalog;
