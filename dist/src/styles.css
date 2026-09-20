@@ -122,6 +122,11 @@ input::placeholder { color: var(--muted); opacity: .9; }
 .guard-sheet .primary { margin-top: 0; }
 .guard-sheet .secondary { width: 100%; margin-top: 8px; }
 .notice { min-height: 1.4em; margin: 12px 0 0; color: var(--danger); font-weight: 700; }
+.backup-reminder { margin: 0 0 18px; padding: 16px; border: 1px solid var(--accent); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 24px rgba(13, 35, 30, .08); }
+.backup-reminder strong { display: block; font-size: 1.05rem; }
+.backup-reminder p { margin: 6px 0 12px; color: var(--muted); line-height: 1.4; }
+.backup-reminder > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.text-button { min-height: 48px; padding: 12px; background: transparent; color: var(--accent); font-weight: 800; }
 .chart-card { overflow: hidden; padding: 12px; }
 canvas { display: block; width: 100%; height: auto; max-width: 100%; }
 #chart-empty { margin: 10px 4px 2px; }

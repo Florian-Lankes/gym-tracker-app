@@ -16,7 +16,7 @@ Requires Node.js 18+.
     npm run build
     npx serve dist
 
-Open the local URL in a browser. The service worker is enabled for the production build; install from the browser's Share menu on iPhone where supported. Use the Settings icon in the Home header to choose a local System / Light / Dark display preference; it stays only in that browser.
+Open the local URL in a browser. The service worker is enabled for the production build; install from the browser's Share menu on iPhone where supported. Use the Settings icon in the Home header for local display and backup preferences. The optional backup reminder stays in the app, never sends notifications, and can be set to Off or every 5, 10 (default), or 20 completed workouts.
 
 ## Checks
 

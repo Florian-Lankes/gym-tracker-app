@@ -4,11 +4,18 @@ import { normalizeTheme, resolveTheme } from './theme.js';
 import { createBackup, mergeBackup, parseBackup } from './backup.js';
 import { exerciseStatistics } from './statistics.js';
 import { EXERCISE_CATALOG, catalogCategories, searchCatalog } from './exercise-catalog.js';
+import { normalizeReminderSettings, resetReminderBaseline, shouldShowBackupReminder } from './reminder.js';
 
 const $ = (selector) => document.querySelector(selector);
 let workouts = [], templates = [], activeSession = null, selectedTemplate = null, selectedCompletedWorkout = null;
 const views = ['home', 'template', 'template-form', 'workout', 'statistics', 'settings', 'workout-detail', 'completed-workout-form'];
 const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+const REMINDER_STORAGE_KEY = 'lift-log-backup-reminder';
+function loadReminderSettings() {
+  try { return normalizeReminderSettings(JSON.parse(localStorage.getItem(REMINDER_STORAGE_KEY))); } catch { return normalizeReminderSettings(); }
+}
+let reminderSettings = loadReminderSettings();
+function persistReminderSettings() { localStorage.setItem(REMINDER_STORAGE_KEY, JSON.stringify(reminderSettings)); }
 function applyTheme(preference) {
   const normalized = normalizeTheme(preference);
   document.documentElement.dataset.theme = resolveTheme(normalized, themeMedia.matches);
@@ -25,24 +32,30 @@ $('#theme-preference').onchange = () => {
 themeMedia.addEventListener('change', () => {
   if (normalizeTheme(localStorage.getItem('lift-log-theme')) === 'system') applyTheme('system');
 });
-function showView(name) { $('#home-header').hidden = name !== 'home'; views.forEach((view) => $(`#${view}-view`).hidden = view !== name); if (name === 'home') renderTemplates(); if (name === 'statistics') renderStatistics(); }
+function showView(name) { $('#home-header').hidden = name !== 'home'; views.forEach((view) => $(`#${view}-view`).hidden = view !== name); if (name === 'home') { renderTemplates(); renderBackupReminder(); } if (name === 'statistics') renderStatistics(); }
 function formatWhen(session) { return new Date(session.completedAt || session.performedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); }
 function formatDuration(seconds) { if (!Number.isFinite(seconds)) return 'Duration unavailable'; const minutes = Math.round(seconds / 60); return minutes ? `${minutes} min` : 'Under a minute'; }
 function persistActive() { return saveActiveSession(activeSession); }
 
 function showDataNotice(message) { $('#data-note').textContent = message; }
+function renderBackupReminder() { $('#backup-reminder').hidden = !shouldShowBackupReminder(workouts, reminderSettings); }
 function downloadBackup() {
+  const exportedReminder = resetReminderBaseline(workouts, reminderSettings);
   const backup = createBackup({
     templates,
     workouts,
     activeSession,
-    theme: normalizeTheme(localStorage.getItem('lift-log-theme'))
+    theme: normalizeTheme(localStorage.getItem('lift-log-theme')),
+    reminder: exportedReminder
   });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
   link.download = `lift-log-backup-${backup.metadata.exportedAt.replace(/[.:]/g, '-')}.json`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 0);
+  reminderSettings = exportedReminder;
+  persistReminderSettings();
+  renderBackupReminder();
   showDataNotice('Backup downloaded. Keep this file somewhere you trust.');
 }
 async function importBackup(file) {
@@ -55,7 +68,8 @@ async function importBackup(file) {
   if (!backup) return showDataNotice('Import result: added 0, skipped 0, invalid 1. Your data was not changed.');
 
   const savedThemePreference = localStorage.getItem('lift-log-theme');
-  const existing = { templates, workouts, activeSession, theme: savedThemePreference ? normalizeTheme(savedThemePreference) : null };
+  const savedReminder = localStorage.getItem(REMINDER_STORAGE_KEY);
+  const existing = { templates, workouts, activeSession, theme: savedThemePreference ? normalizeTheme(savedThemePreference) : null, reminder: savedReminder ? reminderSettings : null };
   const merged = mergeBackup(existing, backup);
   const templateIds = new Set(templates.map((template) => template.id));
   const workoutIds = new Set(workouts.map((workout) => workout.id));
@@ -67,6 +81,11 @@ async function importBackup(file) {
   if (!savedThemePreference) {
     localStorage.setItem('lift-log-theme', merged.theme);
     applyTheme(merged.theme);
+  }
+  if (!savedReminder) {
+    reminderSettings = merged.reminder;
+    persistReminderSettings();
+    $('#backup-reminder-interval').value = reminderSettings.interval;
   }
   [workouts, templates, activeSession] = await Promise.all([loadWorkouts(), loadTemplates(), loadActiveSession()]);
   showDataNotice(`Import result: added ${merged.result.added}, skipped ${merged.result.skipped}, invalid 0.`);
@@ -251,5 +270,9 @@ function closeWorkoutGuard() { $('#guard-actions').hidden = true; $('#save-worko
 $('#workout-back').onclick = openWorkoutGuard; $('#guard-save').onclick = saveCurrentWorkout; $('#save-workout').onclick = saveCurrentWorkout; $('#guard-discard').onclick = discardCurrentWorkout; $('#guard-cancel').onclick = closeWorkoutGuard;
 $('#export-data').onclick = downloadBackup;
 $('#import-data').onchange = async () => { const [file] = $('#import-data').files; $('#import-data').value = ''; if (file) await importBackup(file); };
+$('#backup-reminder-interval').value = reminderSettings.interval;
+$('#backup-reminder-interval').onchange = () => { reminderSettings = normalizeReminderSettings({ ...reminderSettings, interval: Number($('#backup-reminder-interval').value) }); persistReminderSettings(); renderBackupReminder(); };
+$('#backup-reminder-settings').onclick = () => showView('settings');
+$('#dismiss-backup-reminder').onclick = () => { $('#backup-reminder').hidden = true; };
 document.querySelectorAll('[data-back="home"]').forEach((button) => button.onclick = () => showView('home')); $('#chart-exercise').onchange = renderStatistics; $('#statistics-period').onchange = renderStatistics;
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js'); [workouts, templates, activeSession] = await Promise.all([loadWorkouts(), loadTemplates(), loadActiveSession()]); if (activeSession) renderWorkout(); else showView('home');

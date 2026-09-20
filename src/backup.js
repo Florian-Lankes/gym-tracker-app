@@ -1,3 +1,5 @@
+import { normalizeReminderSettings } from './reminder.js';
+
 const BACKUP_FORMAT = 'lift-log-backup';
 const BACKUP_VERSION = 1;
 const themes = new Set(['system', 'light', 'dark']);
@@ -19,7 +21,7 @@ function clone(value) {
   return structuredClone(value);
 }
 
-export function createBackup({ templates, workouts, activeSession, theme }, exportedAt = new Date().toISOString()) {
+export function createBackup({ templates, workouts, activeSession, theme, reminder }, exportedAt = new Date().toISOString()) {
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
@@ -31,7 +33,10 @@ export function createBackup({ templates, workouts, activeSession, theme }, expo
       templates: clone(templates),
       workouts: clone(workouts),
       activeSession: clone(activeSession),
-      settings: { theme: themes.has(theme) ? theme : 'system' }
+      settings: {
+        theme: themes.has(theme) ? theme : 'system',
+        reminder: normalizeReminderSettings(reminder)
+      }
     }
   };
 }
@@ -64,7 +69,9 @@ export function parseBackup(text) {
   const idsAreUnique = (records) => new Set(records.map((record) => record.id)).size === records.length;
   if (!idsAreUnique(templates) || !idsAreUnique(workouts)) return null;
 
-  return clone(backup);
+  const migrated = clone(backup);
+  migrated.data.settings.reminder = normalizeReminderSettings(settings.reminder);
+  return migrated;
 }
 
 function appendNew(existing, incoming) {
@@ -78,14 +85,16 @@ export function mergeBackup(existing, backup) {
   const workouts = appendNew(existing.workouts, backup.data.workouts);
   const addActive = backup.data.activeSession && !existing.activeSession;
   const addTheme = !existing.theme && backup.data.settings.theme;
-  const incomingSingletons = Number(Boolean(backup.data.activeSession)) + 1;
-  const addedSingletons = Number(Boolean(addActive)) + Number(Boolean(addTheme));
+  const addReminder = !existing.reminder && backup.data.settings.reminder;
+  const incomingSingletons = Number(Boolean(backup.data.activeSession)) + 2;
+  const addedSingletons = Number(Boolean(addActive)) + Number(Boolean(addTheme)) + Number(Boolean(addReminder));
 
   return {
     templates: templates.records,
     workouts: workouts.records,
     activeSession: addActive ? clone(backup.data.activeSession) : existing.activeSession,
     theme: addTheme || existing.theme,
+    reminder: addReminder || existing.reminder,
     result: {
       added: templates.added + workouts.added + addedSingletons,
       skipped: templates.skipped + workouts.skipped + incomingSingletons - addedSingletons

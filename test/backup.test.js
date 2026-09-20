@@ -38,17 +38,18 @@ test('exports a readable versioned backup and restores an empty database', () =>
     workouts: [legacyWorkout],
     activeSession,
     theme: 'dark',
-    result: { added: 4, skipped: 0 }
+    reminder: { interval: 10, completedWorkoutIds: [] },
+    result: { added: 5, skipped: 0 }
   });
 });
 
 test('merges by record ID and makes re-importing a backup idempotent', () => {
   const backup = createBackup({ templates: [template], workouts: [legacyWorkout], activeSession, theme: 'light' });
-  const existing = { templates: [template], workouts: [legacyWorkout], activeSession, theme: 'dark' };
+  const existing = { templates: [template], workouts: [legacyWorkout], activeSession, theme: 'dark', reminder: { interval: 10, completedWorkoutIds: [] } };
 
   assert.deepEqual(mergeBackup(existing, backup), {
     ...existing,
-    result: { added: 0, skipped: 4 }
+    result: { added: 0, skipped: 5 }
   });
 });
 
@@ -69,4 +70,20 @@ test('rejects records without stable IDs while accepting legacy completed workou
 
   backup.data.workouts[0].id = '';
   assert.equal(parseBackup(JSON.stringify(backup)), null);
+});
+
+test('backs up reminder settings and migrates existing version 1 backups safely', () => {
+  const withReminder = createBackup({
+    templates: [], workouts: [legacyWorkout], activeSession: null, theme: 'system',
+    reminder: { interval: 5, completedWorkoutIds: ['workout-1'] }
+  });
+  assert.deepEqual(withReminder.data.settings.reminder, { interval: 5, completedWorkoutIds: ['workout-1'] });
+  assert.deepEqual(parseBackup(JSON.stringify(withReminder)).data.settings.reminder, { interval: 5, completedWorkoutIds: ['workout-1'] });
+
+  const existingBackup = createBackup({ templates: [], workouts: [], activeSession: null, theme: 'light' });
+  delete existingBackup.data.settings.reminder;
+  assert.deepEqual(parseBackup(JSON.stringify(existingBackup)).data.settings.reminder, { interval: 10, completedWorkoutIds: [] });
+
+  const merged = mergeBackup({ templates: [], workouts: [], activeSession: null, theme: null, reminder: null }, withReminder);
+  assert.deepEqual(merged.reminder, { interval: 5, completedWorkoutIds: ['workout-1'] });
 });
