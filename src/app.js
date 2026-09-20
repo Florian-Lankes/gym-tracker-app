@@ -1,6 +1,7 @@
 import { createTemplate, startTemplate, completeWorkout, addSet, exerciseHistory, latestValues, completedSessions } from './data.js';
 import { loadWorkouts, saveWorkout, loadTemplates, saveTemplate, deleteTemplate, loadActiveSession, saveActiveSession, clearActiveSession } from './db.js';
 import { normalizeTheme, resolveTheme } from './theme.js';
+import { createBackup, mergeBackup, parseBackup } from './backup.js';
 
 const $ = (selector) => document.querySelector(selector);
 let workouts = [], templates = [], activeSession = null, selectedTemplate = null;
@@ -26,6 +27,48 @@ function showView(name) { $('#home-header').hidden = name !== 'home'; views.forE
 function formatWhen(session) { return new Date(session.completedAt || session.performedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); }
 function formatDuration(seconds) { if (!Number.isFinite(seconds)) return 'Duration unavailable'; const minutes = Math.round(seconds / 60); return minutes ? `${minutes} min` : 'Under a minute'; }
 function persistActive() { return saveActiveSession(activeSession); }
+
+function showDataNotice(message) { $('#data-note').textContent = message; }
+function downloadBackup() {
+  const backup = createBackup({
+    templates,
+    workouts,
+    activeSession,
+    theme: normalizeTheme(localStorage.getItem('lift-log-theme'))
+  });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+  link.download = `lift-log-backup-${backup.metadata.exportedAt.replace(/[.:]/g, '-')}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 0);
+  showDataNotice('Backup downloaded. Keep this file somewhere you trust.');
+}
+async function importBackup(file) {
+  let backup;
+  try {
+    backup = parseBackup(await file.text());
+  } catch {
+    backup = null;
+  }
+  if (!backup) return showDataNotice('Import result: added 0, skipped 0, invalid 1. Your data was not changed.');
+
+  const savedThemePreference = localStorage.getItem('lift-log-theme');
+  const existing = { templates, workouts, activeSession, theme: savedThemePreference ? normalizeTheme(savedThemePreference) : null };
+  const merged = mergeBackup(existing, backup);
+  const templateIds = new Set(templates.map((template) => template.id));
+  const workoutIds = new Set(workouts.map((workout) => workout.id));
+  await Promise.all([
+    ...merged.templates.filter((template) => !templateIds.has(template.id)).map(saveTemplate),
+    ...merged.workouts.filter((workout) => !workoutIds.has(workout.id)).map(saveWorkout),
+    merged.activeSession !== activeSession ? saveActiveSession(merged.activeSession) : Promise.resolve()
+  ]);
+  if (!savedThemePreference) {
+    localStorage.setItem('lift-log-theme', merged.theme);
+    applyTheme(merged.theme);
+  }
+  [workouts, templates, activeSession] = await Promise.all([loadWorkouts(), loadTemplates(), loadActiveSession()]);
+  showDataNotice(`Import result: added ${merged.result.added}, skipped ${merged.result.skipped}, invalid 0.`);
+}
 
 function renderTemplates() {
   const list = $('#template-list'); list.replaceChildren();
@@ -97,5 +140,7 @@ $('#add-template-exercise').onclick = () => appendTemplateExercise(); $('#templa
 function openWorkoutGuard() { $('#save-workout').hidden = true; $('#guard-actions').hidden = false; $('#guard-save').focus(); }
 function closeWorkoutGuard() { $('#guard-actions').hidden = true; $('#save-workout').hidden = false; $('#workout-back').focus(); }
 $('#workout-back').onclick = openWorkoutGuard; $('#guard-save').onclick = saveCurrentWorkout; $('#save-workout').onclick = saveCurrentWorkout; $('#guard-discard').onclick = discardCurrentWorkout; $('#guard-cancel').onclick = closeWorkoutGuard;
+$('#export-data').onclick = downloadBackup;
+$('#import-data').onchange = async () => { const [file] = $('#import-data').files; $('#import-data').value = ''; if (file) await importBackup(file); };
 document.querySelectorAll('[data-back="home"]').forEach((button) => button.onclick = () => showView('home')); $('#chart-exercise').onchange = chart;
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js'); [workouts, templates, activeSession] = await Promise.all([loadWorkouts(), loadTemplates(), loadActiveSession()]); if (activeSession) renderWorkout(); else showView('home');
