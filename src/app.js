@@ -4,7 +4,7 @@ import { normalizeTheme, resolveTheme } from './theme.js';
 
 const $ = (selector) => document.querySelector(selector);
 let workouts = [], templates = [], activeSession = null, selectedTemplate = null;
-const views = ['home', 'template', 'template-form', 'workout', 'statistics'];
+const views = ['home', 'template', 'template-form', 'workout', 'statistics', 'settings'];
 const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
 function applyTheme(preference) {
   const normalized = normalizeTheme(preference);
@@ -22,7 +22,7 @@ $('#theme-preference').onchange = () => {
 themeMedia.addEventListener('change', () => {
   if (normalizeTheme(localStorage.getItem('lift-log-theme')) === 'system') applyTheme('system');
 });
-function showView(name) { views.forEach((view) => $(`#${view}-view`).hidden = view !== name); if (name === 'home') renderTemplates(); if (name === 'statistics') renderStatistics(); }
+function showView(name) { $('#home-header').hidden = name !== 'home'; views.forEach((view) => $(`#${view}-view`).hidden = view !== name); if (name === 'home') renderTemplates(); if (name === 'statistics') renderStatistics(); }
 function formatWhen(session) { return new Date(session.completedAt || session.performedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); }
 function formatDuration(seconds) { if (!Number.isFinite(seconds)) return 'Duration unavailable'; const minutes = Math.round(seconds / 60); return minutes ? `${minutes} min` : 'Under a minute'; }
 function persistActive() { return saveActiveSession(activeSession); }
@@ -77,7 +77,7 @@ async function discardCurrentWorkout() { await clearActiveSession(); activeSessi
 function chart() { const name = $('#chart-exercise').value; const points = exerciseHistory(workouts, name); const canvas = $('#progress-chart'), ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); $('#chart-empty').hidden = Boolean(points.length); if (!points.length) return; const pad = 32, max = Math.max(...points.map((p) => p.weight), 1), min = Math.min(...points.map((p) => p.weight), max - 1), range = max - min || 1; const x = (i) => pad + i * ((canvas.width - pad * 2) / Math.max(points.length - 1, 1)), y = (p) => canvas.height - pad - ((p.weight - min) / range) * (canvas.height - pad * 2); ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--chart').trim(); ctx.lineWidth = 3; ctx.beginPath(); points.forEach((p, i) => i ? ctx.lineTo(x(i), y(p)) : ctx.moveTo(x(i), y(p))); ctx.stroke(); }
 function renderStatistics() { const names = [...new Set(workouts.flatMap((w) => w.exercises.map((e) => e.name)))].sort(), select = $('#chart-exercise'), chosen = select.value; select.replaceChildren(...names.map((name) => new Option(name, name, false, name === chosen))); chart(); const list = $('#overview-list'); list.replaceChildren(); completedSessions(workouts).forEach((session) => { const card = document.createElement('article'); card.className = 'history-card'; card.innerHTML = `<strong></strong><p class="subtle"></p>`; card.querySelector('strong').textContent = session.name; card.querySelector('p').textContent = `${formatWhen(session)} · ${formatDuration(session.durationSeconds)}`; list.append(card); }); if (!workouts.length) list.innerHTML = '<p class="subtle">No completed workouts yet.</p>'; }
 
-$('#new-template').onclick = () => openTemplateForm(); $('#statistics').onclick = () => showView('statistics'); $('#start-template').onclick = startSelectedTemplate; $('#edit-template').onclick = () => openTemplateForm(selectedTemplate);
+$('#new-template').onclick = () => openTemplateForm(); $('#statistics').onclick = () => showView('statistics'); $('#settings').onclick = () => showView('settings'); $('#start-template').onclick = startSelectedTemplate; $('#edit-template').onclick = () => openTemplateForm(selectedTemplate);
 $('#delete-template').onclick = async () => { await deleteTemplate(selectedTemplate.id); templates = await loadTemplates(); showView('home'); };
 $('#add-template-exercise').onclick = () => appendTemplateExercise(); $('#template-form').onsubmit = async (event) => { event.preventDefault(); const exercises = [...document.querySelectorAll('.template-exercise')].map((row) => ({ name: row.querySelector('.template-exercise-name').value, setCount: row.querySelector('.template-set-count').value })); const template = createTemplate($('#template-name').value, exercises); if (!template.exercises.length) { $('#template-note').textContent = 'Add at least one exercise.'; return; } const id = $('#template-id').value; await saveTemplate(id ? { ...template, id } : template); templates = await loadTemplates(); selectedTemplate = templates.find((item) => item.id === (id || template.id)); showView('home'); };
 $('#workout-back').onclick = () => { $('#guard-actions').hidden = false; $('#guard-actions').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }; $('#guard-save').onclick = saveCurrentWorkout; $('#save-workout').onclick = saveCurrentWorkout; $('#guard-discard').onclick = discardCurrentWorkout;
