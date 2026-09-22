@@ -109,14 +109,14 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .9; }
 .exercise-card h3 { font-size: 1.2rem; }
 .previous { margin-bottom: 14px; font-size: .88rem; }
 .workout-note-display { margin: 12px 0; padding: 12px; border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; background: var(--surface-raised); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
-.set-row { display: grid; grid-template-columns: minmax(66px, .75fr) minmax(112px, 1.2fr) minmax(112px, 1.2fr); align-items: end; gap: 8px; padding: 10px 0; border-top: 1px solid var(--border); font-size: .85rem; font-weight: 800; }
+.set-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) minmax(0, 1fr); align-items: end; gap: 8px; padding: 10px 0; border-top: 1px solid var(--border); font-size: .85rem; font-weight: 800; }
 .set-row > span { display: grid; gap: 4px; align-self: stretch; padding: 4px 0; color: var(--muted); }
 .set-row label { gap: 4px; margin: 0; color: var(--muted); font-size: .74rem; }
-.numeric-control { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; gap: 4px; align-items: center; }
-.numeric-control button, .copy-set { min-width: 38px; min-height: 44px; border-radius: 9px; background: var(--secondary); color: var(--text); font-weight: 800; }
-.copy-set { width: 100%; min-height: 36px; padding: 5px 4px; font-size: .7rem; line-height: 1.1; }
+.numeric-control { display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; gap: 4px; align-items: center; }
+.numeric-control button, .copy-set { min-width: 36px; min-height: 44px; border-radius: 9px; background: var(--secondary); color: var(--text); font-weight: 800; }
+.copy-set { width: 100%; padding: 5px 2px; font-size: .7rem; line-height: 1.1; }
 .copy-set:disabled { opacity: .55; cursor: not-allowed; }
-.set-row input { min-width: 0; min-height: 44px; padding: 8px; font-size: 1rem; font-weight: 750; }
+.set-row input { min-width: 0; min-height: 44px; padding: 8px 4px; font-size: 1rem; font-weight: 750; }
 .guard { position: fixed; z-index: 10; inset: 0; display: flex; align-items: end; padding: 20px; background: rgba(5, 17, 15, .52); }
 .guard[hidden] { display: none !important; }
 .guard-sheet { width: min(100%, 580px); margin: 0 auto; padding: 20px; border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border)); border-radius: 16px; background: var(--danger-surface); box-shadow: 0 -12px 36px rgba(0, 0, 0, .25); }
@@ -152,5 +152,5 @@ canvas { display: block; width: 100%; height: auto; max-width: 100%; }
 .remove-completed-set { width: 44px; min-height: 48px; border-radius: 10px; background: var(--danger-surface); color: var(--danger); font-size: 1.5rem; font-weight: 700; }
 .completed-exercise-edit .secondary { margin-top: 8px; }
 .danger-action { background: var(--danger); color: var(--accent-text); }
-@media (max-width: 380px) { .app-shell { padding-inline: 16px; } .template-exercise { grid-template-columns: minmax(0, 1fr) 72px 44px; gap: 6px; } .set-row { grid-template-columns: 62px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; } .numeric-control { grid-template-columns: 34px minmax(0, 1fr) 34px; gap: 3px; } .numeric-control button { min-width: 34px; } .statistics-controls, .progress-metrics, .catalog-controls, #catalog-results { grid-template-columns: 1fr; } }
+@media (max-width: 380px) { .app-shell { padding-inline: 16px; } .template-exercise { grid-template-columns: minmax(0, 1fr) 72px 44px; gap: 6px; } .set-row { grid-template-columns: 42px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; } .numeric-control { grid-template-columns: 30px minmax(0, 1fr) 30px; gap: 2px; } .numeric-control button { min-width: 30px; } .statistics-controls, .progress-metrics, .catalog-controls, #catalog-results { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
