@@ -177,6 +177,10 @@ function renderExerciseCatalog() {
   const query = $('#catalog-search').value;
   const results = $('#catalog-results');
   results.replaceChildren();
+  if (!query.trim() && !category) {
+    results.innerHTML = '<p class="subtle">Search or choose a category to browse the exercise library.</p>';
+    return;
+  }
   searchCatalog(EXERCISE_CATALOG, { category, query }).forEach((exercise) => {
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'catalog-result';
