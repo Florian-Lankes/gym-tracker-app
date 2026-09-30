@@ -63,6 +63,9 @@ h3 { margin-bottom: 6px; font-size: 1.05rem; line-height: 1.2; }
 .data-section h3 { margin-bottom: 8px; font-size: 1.2rem; }
 .data-section .subtle { margin-bottom: 16px; }
 .file-button { display: block; margin: 8px 0 0; text-align: center; }
+.migration-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); align-items: center; gap: 10px; margin: 8px 0; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.migration-row span { overflow-wrap: anywhere; font-size: .92rem; font-weight: 800; }
+.migration-row select { min-width: 0; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .icon-button { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 14px; background: var(--accent); color: var(--accent-text); font-size: 2rem; font-weight: 400; line-height: 1; box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 25%, transparent); }
 .icon-button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -152,5 +155,5 @@ canvas { display: block; width: 100%; height: auto; max-width: 100%; }
 .remove-completed-set { width: 44px; min-height: 48px; border-radius: 10px; background: var(--danger-surface); color: var(--danger); font-size: 1.5rem; font-weight: 700; }
 .completed-exercise-edit .secondary { margin-top: 8px; }
 .danger-action { background: var(--danger); color: var(--accent-text); }
-@media (max-width: 380px) { .app-shell { padding-inline: 16px; } .template-exercise { grid-template-columns: minmax(0, 1fr) 72px 44px; gap: 6px; } .set-row { grid-template-columns: 42px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; } .numeric-control { grid-template-columns: 30px minmax(0, 1fr) 30px; gap: 2px; } .numeric-control button { min-width: 30px; } .statistics-controls, .progress-metrics, .catalog-controls, #catalog-results { grid-template-columns: 1fr; } }
+@media (max-width: 380px) { .app-shell { padding-inline: 16px; } .template-exercise { grid-template-columns: minmax(0, 1fr) 72px 44px; gap: 6px; } .set-row { grid-template-columns: 42px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; } .numeric-control { grid-template-columns: 30px minmax(0, 1fr) 30px; gap: 2px; } .numeric-control button { min-width: 30px; } .statistics-controls, .progress-metrics, .catalog-controls, #catalog-results, .migration-row { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }

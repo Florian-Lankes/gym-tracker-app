@@ -4,6 +4,7 @@ import { normalizeTheme, resolveTheme } from './theme.js';
 import { createBackup, mergeBackup, parseBackup } from './backup.js';
 import { completedWorkoutsForBodyPart, exerciseStatistics } from './statistics.js';
 import { EXERCISE_CATALOG, catalogCategories, searchCatalog, bodyParts, bodyPartForExercise, OTHER_BODY_PART } from './exercise-catalog.js';
+import { collectCustomExerciseNames, previewExerciseMigration, applyExerciseMigration } from './exercise-migration.js';
 import { normalizeReminderSettings, resetReminderBaseline, shouldShowBackupReminder } from './reminder.js';
 
 const $ = (selector) => document.querySelector(selector);
@@ -32,13 +33,52 @@ $('#theme-preference').onchange = () => {
 themeMedia.addEventListener('change', () => {
   if (normalizeTheme(localStorage.getItem('lift-log-theme')) === 'system') applyTheme('system');
 });
-function showView(name) { $('#home-header').hidden = name !== 'home'; views.forEach((view) => $(`#${view}-view`).hidden = view !== name); if (name === 'home') { renderTemplates(); renderBackupReminder(); } if (name === 'statistics') renderStatistics(); }
+function showView(name) { $('#home-header').hidden = name !== 'home'; views.forEach((view) => $(`#${view}-view`).hidden = view !== name); if (name === 'home') { renderTemplates(); renderBackupReminder(); } if (name === 'statistics') renderStatistics(); if (name === 'settings') renderExerciseMigration(); }
 function formatWhen(session) { return new Date(session.completedAt || session.performedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); }
 function formatDuration(seconds) { if (!Number.isFinite(seconds)) return 'Duration unavailable'; const minutes = Math.round(seconds / 60); return minutes ? `${minutes} min` : 'Under a minute'; }
 function persistActive() { return saveActiveSession(activeSession); }
 
 function showDataNotice(message) { $('#data-note').textContent = message; }
 function renderBackupReminder() { $('#backup-reminder').hidden = !shouldShowBackupReminder(workouts, reminderSettings); }
+
+function migrationMappings() {
+  return [...document.querySelectorAll('[data-migration-source]')].map((select) => ({ from: select.dataset.migrationSource, to: select.value }));
+}
+function renderExerciseMigration() {
+  const list = $('#exercise-migration-list');
+  const names = collectCustomExerciseNames({ workouts, templates, activeSession }, EXERCISE_CATALOG);
+  list.replaceChildren();
+  $('#exercise-migration-empty').hidden = Boolean(names.length);
+  $('#exercise-migration-apply').hidden = !names.length;
+  names.forEach((name) => {
+    const row = document.createElement('label'); row.className = 'migration-row';
+    const title = document.createElement('span'); title.textContent = name;
+    const select = document.createElement('select'); select.dataset.migrationSource = name; select.setAttribute('aria-label', `Map ${name} to catalog exercise`);
+    select.append(new Option('Leave as custom', ''), ...EXERCISE_CATALOG.map((exercise) => new Option(`${exercise.name} · ${exercise.bodyPart}`, exercise.name)));
+    select.onchange = renderExerciseMigrationPreview;
+    row.append(title, select); list.append(row);
+  });
+  renderExerciseMigrationPreview();
+}
+function renderExerciseMigrationPreview() {
+  const counts = previewExerciseMigration({ workouts, templates, activeSession }, migrationMappings(), EXERCISE_CATALOG);
+  $('#exercise-migration-preview').textContent = counts.total ? `Will rename ${counts.completedWorkoutExercises} completed workout exercise${counts.completedWorkoutExercises === 1 ? '' : 's'}, ${counts.templateExercises} template exercise${counts.templateExercises === 1 ? '' : 's'}, and ${counts.activeSessionExercises} active-session exercise${counts.activeSessionExercises === 1 ? '' : 's'}.` : 'Choose a catalog exercise to preview affected records.';
+  $('#exercise-migration-apply').disabled = !counts.total;
+}
+async function applyExerciseMigrationFromSettings() {
+  const mappings = migrationMappings();
+  const migrated = applyExerciseMigration({ workouts, templates, activeSession }, mappings, EXERCISE_CATALOG);
+  if (!migrated.changed) { $('#exercise-migration-confirm').hidden = true; renderExerciseMigrationPreview(); return; }
+  await Promise.all([
+    ...migrated.workouts.filter((workout, index) => workout !== workouts[index]).map(saveWorkout),
+    ...migrated.templates.filter((template, index) => template !== templates[index]).map(saveTemplate),
+    migrated.activeSession !== activeSession ? saveActiveSession(migrated.activeSession) : Promise.resolve()
+  ]);
+  [workouts, templates, activeSession] = await Promise.all([loadWorkouts(), loadTemplates(), loadActiveSession()]);
+  $('#exercise-migration-confirm').hidden = true;
+  $('#exercise-migration-note').textContent = `Renamed ${migrated.counts.total} exercise record${migrated.counts.total === 1 ? '' : 's'}.`;
+  renderExerciseMigration();
+}
 function downloadBackup() {
   const exportedReminder = resetReminderBaseline(workouts, reminderSettings);
   const backup = createBackup({
@@ -297,6 +337,15 @@ function closeWorkoutGuard() { $('#guard-actions').hidden = true; $('#save-worko
 $('#workout-back').onclick = openWorkoutGuard; $('#guard-save').onclick = saveCurrentWorkout; $('#save-workout').onclick = saveCurrentWorkout; $('#guard-discard').onclick = discardCurrentWorkout; $('#guard-cancel').onclick = closeWorkoutGuard;
 $('#export-data').onclick = downloadBackup;
 $('#import-data').onchange = async () => { const [file] = $('#import-data').files; $('#import-data').value = ''; if (file) await importBackup(file); };
+$('#exercise-migration-apply').onclick = () => {
+  const counts = previewExerciseMigration({ workouts, templates, activeSession }, migrationMappings(), EXERCISE_CATALOG);
+  if (!counts.total) return;
+  $('#exercise-migration-confirm-message').textContent = `Rename ${counts.completedWorkoutExercises} completed workout exercise${counts.completedWorkoutExercises === 1 ? '' : 's'}, ${counts.templateExercises} template exercise${counts.templateExercises === 1 ? '' : 's'}, and ${counts.activeSessionExercises} active-session exercise${counts.activeSessionExercises === 1 ? '' : 's'}? This updates local records only.`;
+  $('#exercise-migration-confirm').hidden = false;
+  $('#cancel-exercise-migration').focus();
+};
+$('#cancel-exercise-migration').onclick = () => { $('#exercise-migration-confirm').hidden = true; $('#exercise-migration-apply').focus(); };
+$('#confirm-exercise-migration').onclick = applyExerciseMigrationFromSettings;
 $('#backup-reminder-interval').value = reminderSettings.interval;
 $('#backup-reminder-interval').onchange = () => { reminderSettings = normalizeReminderSettings({ ...reminderSettings, interval: Number($('#backup-reminder-interval').value) }); persistReminderSettings(); renderBackupReminder(); };
 $('#backup-reminder-settings').onclick = () => showView('settings');
