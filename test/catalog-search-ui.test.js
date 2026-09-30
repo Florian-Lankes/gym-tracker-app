@@ -27,4 +27,3 @@ test('keeps the 320px template exercise controls within their row', async () => 
   assert.match(styles, /@media\s*\(max-width:\s*380px\)\s*\{[\s\S]*?\.template-exercise\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+72px\s+102px;/s);
   assert.match(styles, /@media\s*\(max-width:\s*380px\)\s*\{[\s\S]*?\.template-exercise-actions\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*32px\);/s);
 });
-
