@@ -4,7 +4,7 @@ import {
   createWorkout, addExercise, addSet, moveExercise, calculateSuggestion, exerciseHistory,
   createTemplate, startTemplate, completeWorkout, completedSessions, prepareActiveSession,
   discardActiveSession, copyPreviousSet, adjustSetValue, reviseCompletedWorkout, removeCompletedWorkout,
-  duplicateTemplate, moveTemplateExercise, setWorkoutNote, setExerciseNote, missingStarterTemplates
+  duplicateTemplate, moveTemplateExercise, setWorkoutNote, setExerciseNote, missingStarterTemplates, latestValues
 } from '../src/data.js';
 
 test('builds an ordered workout with multiple weight and reps sets', () => {
@@ -152,6 +152,20 @@ test('finds prior exercise values and produces an optional labelled suggestion',
 
   assert.deepEqual(history, [{ date: 'Sep 18', weight: 62.5, reps: 7, volume: 917.5 }]);
   assert.match(calculateSuggestion(history), /Optional suggestion/);
+});
+
+test('returns all valid sets from the latest completed matching exercise across workouts', () => {
+  const workouts = [
+    { id: 'older', name: 'Push A', completedAt: '2026-09-22T10:00:00.000Z', exercises: [{ id: 'bench-old', name: 'Bench Press', sets: [{ weight: 20, reps: 8 }] }] },
+    { id: 'latest', name: 'Push B', completedAt: '2026-09-24T10:00:00.000Z', exercises: [{ id: 'bench-latest', name: ' bench press ', sets: [{ weight: 22, reps: 6 }, { weight: 22, reps: 6 }, { weight: 20, reps: 8 }, { weight: '', reps: '' }, { weight: 25, reps: 0 }, { weight: -1, reps: 5 }, { weight: 0, reps: 10 }] }] },
+    { id: 'legacy-between', name: 'Push C', performedAt: '2026-09-23T10:00:00.000Z', exercises: [{ id: 'bench-legacy', name: 'Bench Press', sets: [{ weight: 21, reps: 7 }] }] }
+  ];
+
+  assert.deepEqual(latestValues(workouts, 'BENCH PRESS'), {
+    date: 'Sep 24',
+    sets: [{ weight: 22, reps: 6 }, { weight: 22, reps: 6 }, { weight: 20, reps: 8 }, { weight: 0, reps: 10 }]
+  });
+  assert.equal(latestValues(workouts, 'Squat'), null);
 });
 
 test('orders chart history chronologically across month boundaries', () => {

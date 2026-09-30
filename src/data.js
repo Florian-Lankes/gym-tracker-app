@@ -101,4 +101,22 @@ export function adjustSetValue(value, step, minimum, direction) {
 export function moveExercise(workout, from, to) { if (to < 0 || to >= workout.exercises.length || from === to) return workout; const exercises = [...workout.exercises]; const [exercise] = exercises.splice(from, 1); exercises.splice(to, 0, exercise); return { ...workout, exercises }; }
 export function exerciseHistory(workouts, name) { return workouts.filter((workout) => new Date(workout.performedAt).getTime() <= Date.now()).sort((a, b) => new Date(a.performedAt) - new Date(b.performedAt)).flatMap((workout) => workout.exercises.filter((exercise) => exercise.name.toLowerCase() === name.toLowerCase() && exercise.sets.length).map((exercise) => { const finalSet = exercise.sets.at(-1); const volume = exercise.sets.reduce((total, set) => total + Number(set.weight || 0) * Number(set.reps || 0), 0); return { date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(workout.performedAt)), weight: Number(finalSet.weight), reps: Number(finalSet.reps), volume }; })); }
 export function calculateSuggestion(history) { if (!history.length) return 'Optional suggestion: log a comfortable first set to create your baseline.'; const last = history.at(-1); return `Optional suggestion: repeat ${last.weight} kg × ${last.reps} and add a little only if it feels right.`; }
-export function latestValues(workouts, name) { const history = exerciseHistory(workouts, name); return history.length ? history.at(-1) : null; }
+export function latestValues(workouts, name) {
+  const normalizedName = String(name || '').trim().toLocaleLowerCase();
+  const candidates = workouts.flatMap((workout) => {
+    const dateValue = workout.completedAt || workout.performedAt;
+    const date = new Date(dateValue);
+    if (!normalizedName || Number.isNaN(date.getTime())) return [];
+    return (workout.exercises || []).flatMap((exercise) => {
+      if (String(exercise.name || '').trim().toLocaleLowerCase() !== normalizedName) return [];
+      const sets = (exercise.sets || []).flatMap((set) => {
+        const weight = Number(set.weight), reps = Number(set.reps);
+        return set.weight !== '' && set.reps !== '' && Number.isFinite(weight) && Number.isFinite(reps) && weight >= 0 && reps > 0 ? [{ weight, reps }] : [];
+      });
+      return sets.length ? [{ date, sets }] : [];
+    });
+  });
+  if (!candidates.length) return null;
+  const latest = candidates.reduce((newest, candidate) => candidate.date > newest.date ? candidate : newest);
+  return { date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(latest.date), sets: latest.sets };
+}
