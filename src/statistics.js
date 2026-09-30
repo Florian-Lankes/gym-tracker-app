@@ -1,3 +1,5 @@
+import { bodyPartForExercise } from './exercise-catalog.js';
+
 const eventTime = (workout) => workout.completedAt || workout.performedAt;
 const isLegacyCompletedWorkout = (workout) => !workout.startedAt && Boolean(workout.performedAt);
 const isCompletedWorkout = (workout) => Boolean(workout.completedAt) || isLegacyCompletedWorkout(workout);
@@ -11,6 +13,13 @@ export function filterCompletedWorkouts(workouts, period = 'all', now = new Date
     .filter(isCompletedWorkout)
     .filter((workout) => !cutoff || new Date(eventTime(workout)).getTime() >= cutoff)
     .sort((a, b) => new Date(eventTime(a)) - new Date(eventTime(b)));
+}
+
+export function completedWorkoutsForBodyPart(workouts, bodyPart, period = 'all', now = new Date()) {
+  return filterCompletedWorkouts(workouts, period, now).flatMap((workout) => {
+    const exercises = workout.exercises.filter((exercise) => bodyPartForExercise(exercise.name) === bodyPart);
+    return exercises.length ? [{ ...workout, exercises }] : [];
+  }).sort((a, b) => new Date(eventTime(b)) - new Date(eventTime(a)));
 }
 
 export function exerciseStatistics(workouts, name, period = 'all', now = new Date()) {

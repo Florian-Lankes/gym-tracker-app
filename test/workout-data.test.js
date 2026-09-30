@@ -4,7 +4,7 @@ import {
   createWorkout, addExercise, addSet, moveExercise, calculateSuggestion, exerciseHistory,
   createTemplate, startTemplate, completeWorkout, completedSessions, prepareActiveSession,
   discardActiveSession, copyPreviousSet, adjustSetValue, reviseCompletedWorkout, removeCompletedWorkout,
-  duplicateTemplate, moveTemplateExercise, setWorkoutNote, setExerciseNote
+  duplicateTemplate, moveTemplateExercise, setWorkoutNote, setExerciseNote, missingStarterTemplates
 } from '../src/data.js';
 
 test('builds an ordered workout with multiple weight and reps sets', () => {
@@ -208,4 +208,13 @@ test('keeps optional session and exercise notes through active, completed, revis
   assert.equal(setWorkoutNote(revised, '   ').note, undefined);
   assert.equal(setExerciseNote(revised, revised.exercises[0].id, '').exercises[0].note, undefined);
   assert.equal(setWorkoutNote({ id: 'legacy', exercises: [] }, 'Legacy note').note, 'Legacy note');
+});
+
+test('seeds only missing named starter templates without changing personal templates', () => {
+  const personal = createTemplate('Ok1', [{ name: 'Personal exercise', setCount: 9 }]);
+  const seeded = missingStarterTemplates([personal]);
+  assert.deepEqual(seeded.map((template) => template.name), ['Full legs', 'Ok2']);
+  assert.deepEqual(seeded[0].exercises.map(({ name, setCount }) => [name, setCount]), [['Bein beuger', 2], ['Hack Squads', 2], ['Split squats', 4], ['Beinstrecken', 2], ['Abductor', 3], ['Wadenheben', 3]]);
+  assert.deepEqual(seeded[1].exercises.map(({ name, setCount }) => [name, setCount]), [['Incline Press', 3], ['Pull-up', 3], ['Dip', 1], ['Seated Cable Row', 3], ['Lateral Raise', 3], ['Biceps Curl', 3], ['Trizeps Armstrecker', 1], ['Face pulls', 1]]);
+  assert.deepEqual(missingStarterTemplates([personal, ...seeded]), []);
 });

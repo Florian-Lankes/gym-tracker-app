@@ -133,7 +133,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .9; }
 .chart-card { overflow: hidden; padding: 12px; }
 canvas { display: block; width: 100%; height: auto; max-width: 100%; }
 #chart-empty { margin: 10px 4px 2px; }
-.statistics-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.statistics-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .statistics-controls label { margin: 0; }
 .progress-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
 .progress-metrics > div { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }

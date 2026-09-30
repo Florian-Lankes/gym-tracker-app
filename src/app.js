@@ -1,9 +1,9 @@
-import { createTemplate, duplicateTemplate, startTemplate, completeWorkout, addSet, latestValues, completedSessions, copyPreviousSet, adjustSetValue, reviseCompletedWorkout, setWorkoutNote, setExerciseNote } from './data.js';
-import { loadWorkouts, saveWorkout, deleteWorkout, loadTemplates, saveTemplate, deleteTemplate, loadActiveSession, saveActiveSession, clearActiveSession } from './db.js';
+import { createTemplate, duplicateTemplate, startTemplate, completeWorkout, addSet, latestValues, completedSessions, copyPreviousSet, adjustSetValue, reviseCompletedWorkout, setWorkoutNote, setExerciseNote, missingStarterTemplates } from './data.js';
+import { loadWorkouts, saveWorkout, deleteWorkout, loadTemplates, saveTemplate, deleteTemplate, loadActiveSession, saveActiveSession, clearActiveSession, starterTemplatesSeeded, markStarterTemplatesSeeded } from './db.js';
 import { normalizeTheme, resolveTheme } from './theme.js';
 import { createBackup, mergeBackup, parseBackup } from './backup.js';
-import { exerciseStatistics } from './statistics.js';
-import { EXERCISE_CATALOG, catalogCategories, searchCatalog } from './exercise-catalog.js';
+import { completedWorkoutsForBodyPart, exerciseStatistics } from './statistics.js';
+import { EXERCISE_CATALOG, catalogCategories, searchCatalog, bodyParts, bodyPartForExercise, OTHER_BODY_PART } from './exercise-catalog.js';
 import { normalizeReminderSettings, resetReminderBaseline, shouldShowBackupReminder } from './reminder.js';
 
 const $ = (selector) => document.querySelector(selector);
@@ -191,7 +191,28 @@ async function saveCurrentWorkout() {
 }
 async function discardCurrentWorkout() { await clearActiveSession(); activeSession = null; showView('home'); }
 function chart(points) { const canvas = $('#progress-chart'), ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); $('#chart-empty').hidden = Boolean(points.length); if (!points.length) return; const pad = 32, max = Math.max(...points.map((p) => p.weight), 1), min = Math.min(...points.map((p) => p.weight), max - 1), range = max - min || 1; const x = (i) => pad + i * ((canvas.width - pad * 2) / Math.max(points.length - 1, 1)), y = (p) => canvas.height - pad - ((p.weight - min) / range) * (canvas.height - pad * 2); ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--chart').trim(); ctx.lineWidth = 3; ctx.beginPath(); points.forEach((p, i) => i ? ctx.lineTo(x(i), y(p)) : ctx.moveTo(x(i), y(p))); ctx.stroke(); }
-function renderStatistics() { const names = [...new Set(completedSessions(workouts).flatMap((w) => w.exercises.map((e) => e.name)))].sort(), select = $('#chart-exercise'), chosen = select.value; select.replaceChildren(...names.map((name) => new Option(name, name, false, name === chosen))); if (names.length && !select.value) select.value = names[0]; const stats = exerciseStatistics(workouts, select.value, $('#statistics-period').value); chart(stats.points); const metrics = $('#progress-metrics'); metrics.replaceChildren(); if (stats.bestWeight) { [['Best weight', `${stats.bestWeight.weight} kg × ${stats.bestRepsAtBestWeight}`], ['Total volume', `${stats.totalVolume} kg`], [stats.estimateLabel, `${stats.estimatedOneRepMax} kg`]].forEach(([label, value]) => { const item = document.createElement('div'); item.innerHTML = '<span></span><strong></strong>'; item.querySelector('span').textContent = label; item.querySelector('strong').textContent = value; metrics.append(item); }); } else metrics.innerHTML = '<p class="subtle">Choose an exercise with completed logged sets to see progress.</p>'; const list = $('#overview-list'); list.replaceChildren(); completedSessions(workouts).forEach((session) => { const card = document.createElement('button'); card.type = 'button'; card.className = 'history-card history-button'; card.innerHTML = `<strong></strong><p class="subtle"></p>`; card.querySelector('strong').textContent = session.name; card.querySelector('p').textContent = `${formatWhen(session)} · ${formatDuration(session.durationSeconds)}`; card.onclick = () => { selectedCompletedWorkout = session; renderCompletedWorkoutDetail(); showView('workout-detail'); }; list.append(card); }); if (!workouts.length) list.innerHTML = '<p class="subtle">No completed workouts yet.</p>'; }
+function renderStatistics() {
+  const bodyPartSelect = $('#statistics-body-part');
+  const chosenBodyPart = bodyPartSelect.value;
+  bodyPartSelect.replaceChildren(new Option('All body parts', ''), ...bodyParts().map((bodyPart) => new Option(bodyPart, bodyPart)), new Option(OTHER_BODY_PART, OTHER_BODY_PART));
+  bodyPartSelect.value = chosenBodyPart;
+  const bodyPart = bodyPartSelect.value;
+  const sessions = completedSessions(workouts);
+  const scopedSessions = bodyPart ? completedWorkoutsForBodyPart(workouts, bodyPart) : sessions;
+  const names = [...new Set(scopedSessions.flatMap((session) => session.exercises.filter((exercise) => !bodyPart || bodyPartForExercise(exercise.name) === bodyPart).map((exercise) => exercise.name)))].sort();
+  const select = $('#chart-exercise'), chosen = select.value;
+  select.replaceChildren(...names.map((name) => new Option(name, name, false, name === chosen)));
+  if (names.length && !select.value) select.value = names[0];
+  const stats = exerciseStatistics(workouts, select.value, $('#statistics-period').value);
+  chart(stats.points);
+  const metrics = $('#progress-metrics'); metrics.replaceChildren();
+  if (stats.bestWeight) {
+    [['Best weight', `${stats.bestWeight.weight} kg × ${stats.bestRepsAtBestWeight}`], ['Total volume', `${stats.totalVolume} kg`], [stats.estimateLabel, `${stats.estimatedOneRepMax} kg`]].forEach(([label, value]) => { const item = document.createElement('div'); item.innerHTML = '<span></span><strong></strong>'; item.querySelector('span').textContent = label; item.querySelector('strong').textContent = value; metrics.append(item); });
+  } else metrics.innerHTML = '<p class="subtle">Choose an exercise with completed logged sets to see progress.</p>';
+  const list = $('#overview-list'); list.replaceChildren();
+  scopedSessions.forEach((session) => { const card = document.createElement('button'); card.type = 'button'; card.className = 'history-card history-button'; card.innerHTML = `<strong></strong><p class="subtle"></p>`; card.querySelector('strong').textContent = session.name; card.querySelector('p').textContent = `${formatWhen(session)} · ${formatDuration(session.durationSeconds)}`; card.onclick = () => { selectedCompletedWorkout = session; renderCompletedWorkoutDetail(); showView('workout-detail'); }; list.append(card); });
+  if (!scopedSessions.length) list.innerHTML = `<p class="subtle">${bodyPart ? `No completed workouts for ${bodyPart}.` : 'No completed workouts yet.'}</p>`;
+}
 
 function renderCompletedWorkoutDetail() {
   if (!selectedCompletedWorkout) return showView('statistics');
@@ -280,5 +301,8 @@ $('#backup-reminder-interval').value = reminderSettings.interval;
 $('#backup-reminder-interval').onchange = () => { reminderSettings = normalizeReminderSettings({ ...reminderSettings, interval: Number($('#backup-reminder-interval').value) }); persistReminderSettings(); renderBackupReminder(); };
 $('#backup-reminder-settings').onclick = () => showView('settings');
 $('#dismiss-backup-reminder').onclick = () => { $('#backup-reminder').hidden = true; };
-document.querySelectorAll('[data-back="home"]').forEach((button) => button.onclick = () => showView('home')); $('#chart-exercise').onchange = renderStatistics; $('#statistics-period').onchange = renderStatistics;
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js'); [workouts, templates, activeSession] = await Promise.all([loadWorkouts(), loadTemplates(), loadActiveSession()]); if (activeSession) renderWorkout(); else showView('home');
+document.querySelectorAll('[data-back="home"]').forEach((button) => button.onclick = () => showView('home')); $('#chart-exercise').onchange = renderStatistics; $('#statistics-period').onchange = renderStatistics; $('#statistics-body-part').onchange = renderStatistics;
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+[workouts, templates, activeSession] = await Promise.all([loadWorkouts(), loadTemplates(), loadActiveSession()]);
+if (!await starterTemplatesSeeded()) { await Promise.all(missingStarterTemplates(templates).map(saveTemplate)); await markStarterTemplatesSeeded(); templates = await loadTemplates(); }
+if (activeSession) renderWorkout(); else showView('home');

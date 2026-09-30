@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { exerciseStatistics, filterCompletedWorkouts } from '../src/statistics.js';
+import { completedWorkoutsForBodyPart, exerciseStatistics, filterCompletedWorkouts } from '../src/statistics.js';
 import { reviseCompletedWorkout, removeCompletedWorkout } from '../src/data.js';
 
 const workouts = [
@@ -70,4 +70,12 @@ test('recalculates statistics after a completed workout is edited or deleted', (
 
   assert.equal(exerciseStatistics(afterEdit, 'Bench Press').totalVolume, 1230);
   assert.equal(exerciseStatistics(removeCompletedWorkout(afterEdit, edited.id), 'Bench Press').totalVolume, 830);
+});
+
+test('limits completed history scope to the selected body part while retaining custom names', () => {
+  const quads = completedWorkoutsForBodyPart(workouts, 'Quads');
+  assert.deepEqual(quads.map((workout) => workout.id), ['recent-squat']);
+  assert.deepEqual(quads[0].exercises.map((exercise) => exercise.name), ['Squat']);
+  const custom = completedWorkoutsForBodyPart([{ id: 'custom', completedAt: '2026-09-20T10:00:00.000Z', exercises: [{ id: 'x', name: 'Legacy lift', sets: [{ weight: 1, reps: 1 }] }] }], 'Other / custom');
+  assert.equal(custom.length, 1);
 });

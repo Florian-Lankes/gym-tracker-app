@@ -17,6 +17,17 @@ export function createTemplate(name = 'Template', exercises = []) {
   };
 }
 
+export const STARTER_TEMPLATES = [
+  { name: 'Full legs', exercises: [{ name: 'Bein beuger', setCount: 2 }, { name: 'Hack Squads', setCount: 2 }, { name: 'Split squats', setCount: 4 }, { name: 'Beinstrecken', setCount: 2 }, { name: 'Abductor', setCount: 3 }, { name: 'Wadenheben', setCount: 3 }] },
+  { name: 'Ok2', exercises: [{ name: 'Incline Press', setCount: 3 }, { name: 'Pull-up', setCount: 3 }, { name: 'Dip', setCount: 1 }, { name: 'Seated Cable Row', setCount: 3 }, { name: 'Lateral Raise', setCount: 3 }, { name: 'Biceps Curl', setCount: 3 }, { name: 'Trizeps Armstrecker', setCount: 1 }, { name: 'Face pulls', setCount: 1 }] },
+  { name: 'Ok1', exercises: [{ name: 'Incline Press', setCount: 3 }, { name: 'Pull-up', setCount: 3 }, { name: 'Seated Cable Row', setCount: 3 }, { name: 'Flys', setCount: 3 }, { name: 'Lateral Raise', setCount: 3 }, { name: 'Triceps Pushdown', setCount: 3 }, { name: 'Biceps Curl', setCount: 3 }] }
+];
+
+export function missingStarterTemplates(existingTemplates, starterTemplates = STARTER_TEMPLATES) {
+  const existingNames = new Set(existingTemplates.map((template) => String(template.name || '').trim().toLocaleLowerCase()));
+  return starterTemplates.filter((template) => !existingNames.has(template.name.toLocaleLowerCase())).map((template) => createTemplate(template.name, template.exercises));
+}
+
 export function duplicateTemplate(template, existingNames = []) {
   const sourceName = template.name.trim() || 'Template';
   const names = new Set(existingNames.map((name) => String(name).trim().toLocaleLowerCase()));

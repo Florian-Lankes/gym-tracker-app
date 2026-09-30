@@ -2,16 +2,19 @@ const DB_NAME = 'lift-log';
 const WORKOUT_STORE = 'workouts';
 const TEMPLATE_STORE = 'templates';
 const ACTIVE_STORE = 'active-session';
+const META_STORE = 'meta';
 const ACTIVE_ID = 'current';
+const PRESET_SEED_ID = 'starter-templates-v1';
 
 function database() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 3);
+    const request = indexedDB.open(DB_NAME, 4);
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(WORKOUT_STORE)) db.createObjectStore(WORKOUT_STORE, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(TEMPLATE_STORE)) db.createObjectStore(TEMPLATE_STORE, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(ACTIVE_STORE)) db.createObjectStore(ACTIVE_STORE, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE, { keyPath: 'id' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -30,3 +33,5 @@ export function deleteTemplate(id) { return remove(TEMPLATE_STORE, id); }
 export async function loadActiveSession() { const record = await get(ACTIVE_STORE, ACTIVE_ID); return record?.session || null; }
 export function saveActiveSession(session) { return put(ACTIVE_STORE, { id: ACTIVE_ID, session }); }
 export function clearActiveSession() { return remove(ACTIVE_STORE, ACTIVE_ID); }
+export async function starterTemplatesSeeded() { return Boolean(await get(META_STORE, PRESET_SEED_ID)); }
+export function markStarterTemplatesSeeded() { return put(META_STORE, { id: PRESET_SEED_ID }); }
