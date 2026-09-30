@@ -4,14 +4,15 @@ import { readFile } from 'node:fs/promises';
 
 const projectFile = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('preserves pinch zoom while suppressing double-tap zoom on the app shell', async () => {
+test('requests disabled page zoom while retaining scoped touch interaction styling', async () => {
   const [html, styles] = await Promise.all([
     projectFile('index.html'),
     projectFile('src/styles.css'),
   ]);
 
   const viewport = html.match(/<meta\s+name=["']viewport["']\s+content=["']([^"']+)["']/i)?.[1] ?? '';
-  assert.doesNotMatch(viewport, /(?:maximum-scale|user-scalable)\s*=/i);
+  assert.match(viewport, /(?:^|,)\s*maximum-scale\s*=\s*1\s*(?:,|$)/i);
+  assert.match(viewport, /(?:^|,)\s*user-scalable\s*=\s*no\s*(?:,|$)/i);
   assert.match(styles, /\.app-shell\s*\{[^}]*touch-action\s*:\s*manipulation\s*;/s);
 });
 

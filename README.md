@@ -25,7 +25,7 @@ Open the local URL in a browser. The service worker is enabled for the productio
 
 ## Touch interaction
 
-The app uses `touch-action: manipulation` on its shell to reduce accidental double-tap zoom in browsers that support this CSS behavior. Pinch zoom remains enabled; browser support determines whether double-tap zoom is suppressed.
+The viewport requests no page zoom (`maximum-scale=1,user-scalable=no`) and the app shell uses `touch-action: manipulation` to suppress accidental double-tap and pinch zoom where the installed browser/PWA honors standard viewport policy. Browser or OS accessibility settings may override this request; Lift Log does not use broad JavaScript gesture prevention, so native text entry, selection, scrolling, and controls remain available.
 
 ## Privacy
 
